@@ -32,6 +32,11 @@ catkin_package(
    DEPENDS Eigen3 pinocchio
 )
 
+catkin_install_python(PROGRAMS
+   src/ridgeback_state_publisher_node.py
+   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+ )
+
 ###########
 ## Build ##
 ###########
