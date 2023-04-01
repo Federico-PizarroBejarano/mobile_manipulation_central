@@ -78,11 +78,11 @@ target_link_libraries(projectile_vicon_estimator_node
   ${catkin_LIBRARIES}
 )
 
-add_executable(kinematics_example src/kinematics_example.cpp)
-target_link_libraries(kinematics_example
-  ${catkin_LIBRARIES}
-  ${pinocchio_LIBRARIES}
-)
+#add_executable(kinematics_example src/kinematics_example.cpp)
+#target_link_libraries(kinematics_example
+#  ${catkin_LIBRARIES}
+#  ${pinocchio_LIBRARIES}
+#)
 
 #############
 ## Install ##
