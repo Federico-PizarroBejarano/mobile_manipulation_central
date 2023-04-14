@@ -172,6 +172,30 @@ def parse_transform_stamped_msgs(msgs, normalize_time=True):
     poses = np.array([parse_transform_stamped_msg(msg)[1] for msg in msgs])
     return ts, poses
 
+def parse_multidofjointtrajectorypoint_msg(msg):
+    transform = msg.transforms[0]
+    r = transform.translation
+    q = transform.rotation
+    pose = np.array([r.x, r.y, r.z, q.x, q.y, q.z, q.w])
+    
+    return pose
+
+def parse_multidofjointtrajectory_msg(msgs, normalize_time=True):
+    ts = parse_time(msgs, normalize_time=normalize_time)
+    poses_dict = {}
+    for joint_name in msgs[0].joint_names:
+        poses_dict[joint_name] = []
+
+    for msg in msgs:
+        for pt_id, pt_msg in enumerate(msg.points):
+            pose = parse_multidofjointtrajectorypoint_msg(pt_msg)
+            poses_dict[msg.joint_names[pt_id]].append(pose)
+
+    for key, val in poses_dict.items():
+        poses_dict[key] = np.array(val)
+
+    return ts, poses_dict
+
 
 def lerp(x, y, s):
     """Linearly interpolate between values x and y with parameter s in [0, 1]."""

@@ -41,9 +41,9 @@ def main():
     plt.grid()
 
     plt.figure()
-    plt.plot(tbs, vbs[:, 0], label="x")
-    plt.plot(tbs, vbs[:, 1], label="y")
-    plt.plot(tbs, vbs[:, 2], label="θ")
+    plt.plot(tbs, vbs[:, 0], '-x', label="x")
+    plt.plot(tbs, vbs[:, 1], '-x', label="y")
+    plt.plot(tbs, vbs[:, 2], '-x', label="θ")
     plt.title("Ridgeback Joint Velocities")
     plt.xlabel("Time (s)")
     plt.ylabel("Joint velocity")
@@ -61,7 +61,7 @@ def main():
 
     plt.figure()
     for i in range(6):
-        plt.plot(tas, vas[:, i], label=f"v_{i+1}")
+        plt.plot(tas, vas[:, i], '-x', label=f"v_{i+1}")
     plt.title("UR10 Joint Velocities")
     plt.xlabel("Time (s)")
     plt.ylabel("Joint velocity (rad/s)")
@@ -70,7 +70,8 @@ def main():
 
     plt.figure()
     for i in range(6):
-        plt.plot(ur10_cmd_ts, ur10_cmd_vels[:, i], label=f"vc_{i+1}")
+        plt.plot(ur10_cmd_ts, ur10_cmd_vels[:, i], '-x', label=f"vc_{i+1}")
+        plt.plot(tas, vas[:, i], '--', label=f"v_{i+1}")
     plt.title("UR10 Commanded Joint Velocities")
     plt.xlabel("Time (s)")
     plt.ylabel("Joint velocity (rad/s)")
