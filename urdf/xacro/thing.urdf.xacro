@@ -2,4 +2,7 @@
 <robot name="thing" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:include filename="ridgeback_wheels.urdf.xacro" />
   <xacro:include filename="thing_no_wheels.urdf.xacro" />
+  <xacro:include filename="$(find mmseq_assets)/thing/xacro/collision.urdf.xacro" />
+  <xacro:include filename="$(find mmseq_assets)/thing/xacro/end_effector_fingers.urdf.xacro" />
+<!--  <xacro:include filename="$(find mmseq_assets)/thing/xacro/end_effector_box.urdf.xacro" />-->
 </robot>
