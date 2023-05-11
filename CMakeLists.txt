@@ -34,6 +34,7 @@ catkin_package(
 
 catkin_install_python(PROGRAMS
    src/ridgeback_state_publisher_node.py
+   src/joy_stick_relay_node.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 
