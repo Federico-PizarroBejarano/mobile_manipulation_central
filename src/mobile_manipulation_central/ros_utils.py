@@ -151,6 +151,24 @@ def parse_ridgeback_joint_state_msgs(msgs, normalize_time=True):
 
     return ts, np.array(qs), np.array(vs)
 
+def parse_ridgeback_cmd_vel_msgs(msgs):
+    """Parse a list of Ridgeback geometry/Twist messages.
+
+        If normalize_time=True, the time array is shifted so that t[0] = 0."""
+
+    cmd_vels = []
+    for msg in msgs:
+        cmd_vels.append([msg.linear.x, msg.linear.y, msg.angular.z])
+
+    return np.array(cmd_vels)
+
+def parse_ur10_cmd_vel_msgs(msgs):
+    cmd_vels = []
+    for msg in msgs:
+        cmd_vels.append(msg.data)
+    cmd_vels = np.array(cmd_vels)
+
+    return cmd_vels
 
 def parse_transform_stamped_msg(msg):
     """Parse time and pose from a TransformStamped message.
@@ -183,16 +201,17 @@ def parse_multidofjointtrajectorypoint_msg(msg):
 def parse_multidofjointtrajectory_msg(msgs, normalize_time=True):
     ts = parse_time(msgs, normalize_time=normalize_time)
     poses_dict = {}
-    for joint_name in msgs[0].joint_names:
-        poses_dict[joint_name] = []
+    if len(msgs) > 0:
+        for joint_name in msgs[0].joint_names:
+            poses_dict[joint_name] = []
 
-    for msg in msgs:
-        for pt_id, pt_msg in enumerate(msg.points):
-            pose = parse_multidofjointtrajectorypoint_msg(pt_msg)
-            poses_dict[msg.joint_names[pt_id]].append(pose)
+        for msg in msgs:
+            for pt_id, pt_msg in enumerate(msg.points):
+                pose = parse_multidofjointtrajectorypoint_msg(pt_msg)
+                poses_dict[msg.joint_names[pt_id]].append(pose)
 
-    for key, val in poses_dict.items():
-        poses_dict[key] = np.array(val)
+        for key, val in poses_dict.items():
+            poses_dict[key] = np.array(val)
 
     return ts, poses_dict
 
