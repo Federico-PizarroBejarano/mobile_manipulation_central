@@ -44,6 +44,7 @@ class UR10ControlCommandRelayInterface(ControlCommandRelayInterface):
         self.cmd_sub = rospy.Subscriber("/ur10/cmd_vel", Float64MultiArray, self._cmd_vel_cb)
         self.relay_pub = rospy.Publisher("/ur10/ur10_velocity_controller/cmd_vel", Float64MultiArray, queue_size=1)
         self.empty_msg = Float64MultiArray()
+        self.empty_msg.data = [0]*6
 
     def _cmd_vel_cb(self, msg):
         self.switch_lock.acquire()
@@ -62,9 +63,10 @@ class MobileManipulatorControlCommandRelayInterface:
         self.base = RidgebackControlCommandRelayInterface()
 
         self.joy_sub = rospy.Subscriber("/bluetooth_teleop/joy", Joy, self._joy_cb)
+        self.enable_button = 13
 
     def _joy_cb(self, msg):
-        button = msg.buttons[5]         # 1 when pressed
+        button = msg.buttons[self.enable_button]         # 1 when pressed
 
         self.arm.update_switch(button)
         self.base.update_switch(button)
