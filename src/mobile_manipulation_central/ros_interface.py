@@ -2,7 +2,7 @@ import numpy as np
 import rospy
 
 from spatialmath.base import rotz
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseArray
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import TransformStamped
@@ -34,6 +34,31 @@ class ViconObjectInterface:
 
         self.msg_received = True
 
+class ViconMarkerSwarmInterface:
+    """ROS interface for receiving state estiation for a swarm of vicon markers."""
+
+    def __init__(self, topic):
+        self.msg_received = False
+        self.sub = rospy.Subscriber(topic, PoseArray, self._pose_array_cb)
+
+    def ready(self):
+        """True if a swarm state message has been received."""
+        return self.msg_received
+
+    def _pose_array_cb(self, msg):
+
+        self.position = []
+        self.orientation = []
+        for pose in msg.poses:
+            L = pose.position
+            Q = pose.orientation
+            self.position.append([L.x, L.y, L.z])
+            self.orientation.append([Q.x, Q.y, Q.z, Q.w])
+
+        self.position = np.array(self.position)
+        self.orientation = np.array(self.orientation)
+
+        self.msg_received = True
 
 class RobotROSInterface:
     """Base class for defining ROS interfaces for robots."""
