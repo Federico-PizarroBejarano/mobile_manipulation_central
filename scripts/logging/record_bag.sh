@@ -7,4 +7,5 @@ rosbag record -o "$BAG_DIR/$1" \
   --regex "/ridgeback/(.*)" \
   --regex "/ridgeback_velocity_controller/(.*)" \
   --regex "/ur10/(.*)" \
-  --regex "/vicon/(.*)"
+  --regex "/vicon/(.*)" \
+  --regex "/mpc_tracking_pt"
