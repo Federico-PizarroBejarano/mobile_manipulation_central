@@ -1,16 +1,64 @@
 import numpy as np
 import rospy
+import threading
 
 from spatialmath.base import rotz
 from geometry_msgs.msg import Twist, PoseArray
 from std_msgs.msg import Float64MultiArray
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, Joy
 from geometry_msgs.msg import TransformStamped
 
 from mobile_manipulation_central import ros_utils
 
 
 # TODO add protections if time since last message is too large
+
+
+class JoystickButtonInterface:
+    """
+        Monitor on joy stick button. Flag event when the button is pressed. Event flag can only be cleared externally.
+    """
+
+    def __init__(self, button_index):
+
+        self.button_index = button_index
+        self.button = 0             # 1 pressed, 0 available
+        self.busy = False
+        self.button_lock = threading.Lock()
+        self.block_out_time = 0.5 # 0.5 second
+        self.last_reset_time = rospy.Time.now().to_sec()
+
+        self.msg_received = False
+        self.joy_sub = rospy.Subscriber("/bluetooth_teleop/joy", Joy, self._joy_cb, queue_size=10)
+
+
+    def _joy_cb(self, msg):
+        if msg.buttons[self.button_index] == 1:
+            self._update_button(1)
+            print("set button {}".format(self.button))
+
+
+        self.msg_received = True
+
+    def reset_button(self):
+        self._update_button(0, True)
+        print("reset button {}".format(self.button))
+        self.last_reset_time = rospy.Time.now().to_sec()
+
+
+    def _update_button(self, value, force=False):
+        t_now = rospy.Time.now().to_sec()
+        if t_now - self.last_reset_time > self.block_out_time or force:
+            if value != self.button:
+                self.button_lock.acquire()
+                self.button = value
+                print("update button {}".format(self.button))
+
+                self.button_lock.release()
+
+    def ready(self):
+        """True if a Vicon message has been received."""
+        return self.msg_received
 
 
 class ViconObjectInterface:
@@ -75,6 +123,7 @@ class RobotROSInterface:
     def brake(self):
         """Brake (stop) the robot."""
         self.publish_cmd_vel(np.zeros(self.nv))
+        print("braking!!!")
 
     def ready(self):
         """True if joint state messages have been received."""
