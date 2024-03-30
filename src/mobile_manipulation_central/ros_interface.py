@@ -7,11 +7,51 @@ from geometry_msgs.msg import Twist, PoseArray
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import JointState, Joy
 from geometry_msgs.msg import TransformStamped
+from visualization_msgs.msg import MarkerArray
 
 from mobile_manipulation_central import ros_utils
 
 
 # TODO add protections if time since last message is too large
+
+class MapInterface:
+    """
+        ROS interface for receiving maps
+    """
+
+    def __init__(self, topic_name: str):
+        self.map_sub = rospy.Subscriber(topic_name, MarkerArray, self._map_cb)
+        self.mutex = threading.Lock()
+        self.map = None
+        self.msg_received = False
+        self.valid = False
+        self.map_updated = False
+    
+    def ready(self):
+        return self.msg_received and self.valid
+    
+    def get_map(self):
+        if self.map_updated:
+            self.mutex.acquire(blocking=True)
+            map_copy = self.map.copy()
+            self.map_updated = False
+            self.mutex.release()
+
+            return True, map_copy
+        else:
+            return False, None
+    
+    def _map_cb(self, msg):
+    
+        if len(msg.markers)>0:
+            self.mutex.acquire(blocking=True)
+            self.map = msg.markers[0].points
+            self.map_updated = True
+            self.mutex.release()
+
+            self.valid = True
+
+        self.msg_received = True
 
 
 class JoystickButtonInterface:
