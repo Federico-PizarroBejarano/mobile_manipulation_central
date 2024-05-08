@@ -50,10 +50,12 @@ class RidgebackStatePublisherNode:
 
             self.odom_init = True
 
-        self.odom_map_tf.header.stamp = rospy.Time.now()
+        # self.odom_map_tf.header.stamp = rospy.Time.now()
+        self.odom_map_tf.header.stamp = msg.header.stamp
         self.broadcaster_static.sendTransform(self.odom_map_tf)
 
-        self.baselink_map_tf.header.stamp = rospy.Time.now()
+        # self.baselink_map_tf.header.stamp = rospy.Time.now()
+        self.baselink_map_tf.header.stamp = msg.header.stamp
         self.baselink_map_tf.transform.translation.x = msg.position[0]
         self.baselink_map_tf.transform.translation.y = msg.position[1]
         self.baselink_map_tf.transform.translation.z = 0.
