@@ -1,8 +1,9 @@
 import numpy as np
 import rospy
 import threading
-
+from scipy.interpolate import LinearNDInterpolator, CloughTocher2DInterpolator,RegularGridInterpolator
 from spatialmath.base import rotz
+
 from geometry_msgs.msg import Twist, PoseArray
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import JointState, Joy
@@ -56,6 +57,106 @@ class MapInterface:
 
         self.msg_received = True
 
+class MapInterfaceNew:
+    """
+        ROS interface for receiving and post-processing maps
+    """
+
+    def __init__(self, config, topic_name: str="/pocd_slam_node/occupied_ef_dist_nodes"):
+        self.map_sub = rospy.Subscriber(topic_name, MarkerArray, self._map_cb)
+        self.mutex = threading.Lock()
+        self.robot_pose_mutex = threading.Lock()
+
+        self.map_received = False
+        self.joint_states_received = False
+        self.valid = False
+
+        self.map = None
+        self.tsdf = None
+        self.tsdf_val = None
+
+        self.mul=10
+        self.map_coverage = np.array(config["map"]["map_coverage"])
+        self.default_val = config["map"]["default_val"]
+        self.voxel_size = config["map"]["voxel_size"]
+        self.map_size = np.ceil(self.map_coverage / self.voxel_size).astype(int)
+        
+        self.joint_state_sub = rospy.Subscriber(
+            "/ridgeback/joint_states", JointState, self._joint_state_cb
+        )
+
+    def ready(self):
+        return self.map_received and self.valid and self.joint_states_received
+    
+    def get_map(self):
+        if self.ready():
+            self.mutex.acquire(blocking=True)
+            map = self.map
+            self.mutex.release()
+
+            return True, map
+        else:
+            return False, None
+    
+    def _map_cb(self, msg):
+    
+        if len(msg.markers)>0 and self.joint_states_received:
+
+            tsdf = msg.markers[0].points
+            tsdf_vals = msg.markers[0].colors
+            map = self._create_map(tsdf, tsdf_vals)
+            self.mutex.acquire(blocking=True)
+            self.map = map
+            self.tsdf = tsdf
+            self.tsdf_vals = tsdf_vals
+            self.mutex.release()
+
+            self.valid = True
+
+        self.map_received = True
+
+    def _joint_state_cb(self, msg):
+        """Callback for Ridgeback joint feedback."""
+        q = np.array(msg.position)
+        Tbw = np.eye(4)
+        Tbw[:2, 3] = q[:2]
+        Tbw[:3, :3] = rotz(q[2])
+        self.robot_pose_mutex.acquire(blocking=True)
+        self.curr_robot_pose = Tbw
+        self.robot_pose_mutex.release()
+
+        self.joint_states_received = True
+
+    
+    def _create_map(self, tsdf, tsdf_vals):
+        pts = np.around(np.array([np.array([p.x,p.y]) for p in tsdf]), 2).reshape((len(tsdf),2))
+        vs = [c.r * self.mul for c in tsdf_vals]
+
+        xg, yg = self._get_grid()
+
+        X, Y = np.meshgrid(xg, yg, indexing='ij')
+        map_ir = LinearNDInterpolator(pts, vs)
+        map_ir((0,0))
+
+        v = np.nan_to_num(map_ir(X, Y), True, self.default_val)
+        v = v.ravel(order='F')
+
+        return xg, yg, v
+    
+    def _get_grid(self):
+        # Limit the map to a certain size around the robot
+        self.robot_pose_mutex.acquire(blocking=True)
+        curr_robot_pose = self.curr_robot_pose.copy()
+        self.robot_pose_mutex.release()
+        max_x = np.around(curr_robot_pose[0,3]+self.map_coverage[0]/2, 2)
+        min_x = np.around(curr_robot_pose[0,3]-self.map_coverage[0]/2, 2)
+        max_y = np.around(curr_robot_pose[1,3]+self.map_coverage[1]/2, 2)
+        min_y = np.around(curr_robot_pose[1,3]-self.map_coverage[1]/2, 2)
+
+        xg = np.linspace(min_x, max_x, self.map_size[0])
+        yg = np.linspace(min_y, max_y, self.map_size[1])
+
+        return xg, yg
 
 class JoystickButtonInterface:
     """
@@ -166,7 +267,6 @@ class RobotROSInterface:
     def brake(self):
         """Brake (stop) the robot."""
         self.publish_cmd_vel(np.zeros(self.nv))
-        print("braking!!!")
 
     def ready(self):
         """True if joint state messages have been received."""
