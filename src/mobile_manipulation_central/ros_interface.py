@@ -80,7 +80,7 @@ class MapInterfaceNew:
         self.default_val = config["map"]["default_val"]
         self.voxel_size = config["map"]["voxel_size"]
         self.map_size = np.ceil(self.map_coverage / self.voxel_size).astype(int)
-        
+        self.map_dim = self.map_size.size
         self.joint_state_sub = rospy.Subscriber(
             "/ridgeback/joint_states", JointState, self._joint_state_cb
         )
@@ -104,7 +104,10 @@ class MapInterfaceNew:
 
             tsdf = msg.markers[0].points
             tsdf_vals = msg.markers[0].colors
-            map = self._create_map(tsdf, tsdf_vals)
+            if self.map_dim==2:
+                map = self._create_map_2d(tsdf, tsdf_vals)  
+            elif self.map_dim==3:
+                map = self._create_map_3d(tsdf, tsdf_vals)
             self.mutex.acquire(blocking=True)
             self.map = map
             self.tsdf = tsdf
@@ -128,11 +131,11 @@ class MapInterfaceNew:
         self.joint_states_received = True
 
     
-    def _create_map(self, tsdf, tsdf_vals):
+    def _create_map_2d(self, tsdf, tsdf_vals):
         pts = np.around(np.array([np.array([p.x,p.y]) for p in tsdf]), 2).reshape((len(tsdf),2))
         vs = [c.r * self.mul for c in tsdf_vals]
 
-        xg, yg = self._get_grid()
+        xg, yg = self._get_grid_2d()
 
         X, Y = np.meshgrid(xg, yg, indexing='ij')
         map_ir = LinearNDInterpolator(pts, vs)
@@ -143,7 +146,7 @@ class MapInterfaceNew:
 
         return xg, yg, v
     
-    def _get_grid(self):
+    def _get_grid_2d(self):
         # Limit the map to a certain size around the robot
         self.robot_pose_mutex.acquire(blocking=True)
         curr_robot_pose = self.curr_robot_pose.copy()
@@ -157,6 +160,30 @@ class MapInterfaceNew:
         yg = np.linspace(min_y, max_y, self.map_size[1])
 
         return xg, yg
+    
+    def _create_map_3d(self, tsdf, tsdf_vals):
+        pts = np.around(np.array([np.array([p.x,p.y,p.z]) for p in tsdf]), 2).reshape((len(tsdf),3))
+        vs = [c.r * self.mul for c in tsdf_vals]
+
+        self.map_ir = LinearNDInterpolator(pts, vs) # choose LinearNDInterpolator(pts, vs) or CloughTocher2DInterpolator(pts, vs) ort RegularGridInterpolator?
+        self.map_ir(0,0,0)
+
+        # Limit the map to a certain size around the robot
+        max_x = np.around(min(max(pts[:,0]), self.curr_robot_pose[0,3]+self.map_size[0]/2), 2)
+        min_x = np.around(max(min(pts[:,0]), self.curr_robot_pose[0,3]-self.map_size[0]/2), 2)
+        max_y = np.around(min(max(pts[:,1]), self.curr_robot_pose[1,3]+self.map_size[1]/2), 2)
+        min_y = np.around(max(min(pts[:,1]), self.curr_robot_pose[1,3]-self.map_size[1]/2), 2)
+        max_z = max(pts[:,2])
+        min_z = min(pts[:,2])
+
+        xg = np.linspace(min_x, max_x, self.map_size[0])
+        yg = np.linspace(min_y, max_y, self.map_size[1])
+        zg = np.linspace(min_z, max_z, self.map_size[2])
+
+        X, Y, Z = np.meshgrid(xg, yg, zg, indexing='ij')
+        v = np.nan_to_num(self.map_ir(X, Y, Z), True, self.default_val)
+        v = v.ravel(order='F')
+        return xg, yg, zg, v
 
 class JoystickButtonInterface:
     """
