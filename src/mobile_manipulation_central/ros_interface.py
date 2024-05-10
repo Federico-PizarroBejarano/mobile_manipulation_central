@@ -184,6 +184,60 @@ class MapInterfaceNew:
         v = np.nan_to_num(self.map_ir(X, Y, Z), True, self.default_val)
         v = v.ravel(order='F')
         return xg, yg, zg, v
+    
+    def _create_map_3d_3(self, tsdf, tsdf_vals):
+        pts = np.around(np.array([np.array([p.x,p.y,p.z]) for p in tsdf]), 2).reshape((len(tsdf),3))
+        vs = [c.r * self.mul for c in tsdf_vals]
+        
+        xs = np.unique(pts[:,0])
+        ys = np.unique(pts[:,1])
+        zs = np.unique(pts[:,2])
+
+        val_dict = {}
+
+        for idx in range(len(vs)):
+            val_dict[(pts[idx,0],pts[idx,1],pts[idx,2])] = vs[idx]
+
+        # must make sure the xy size is smaller than the filled up regions around the robot from mapping c++ code
+        max_x = np.around(min(max(pts[:,0]), self.curr_robot_pose[0,3]+self.map_size[0]/2), 2)
+        min_x = np.around(max(min(pts[:,0]), self.curr_robot_pose[0,3]-self.map_size[0]/2), 2)
+        max_y = np.around(min(max(pts[:,1]), self.curr_robot_pose[1,3]+self.map_size[1]/2), 2)
+        min_y = np.around(max(min(pts[:,1]), self.curr_robot_pose[1,3]-self.map_size[1]/2), 2)
+
+        #remove the xyz pts outside the boundary
+        xs = sorted(xs[(xs>=min_x) & (xs<=max_x)])
+        ys = sorted(ys[(ys>=min_y) & (ys<=max_y)])
+
+        data = np.ones((len(xs),len(ys),len(zs))) * self.default_val
+        # Convert xs, ys, and zs to sets
+        xs_set = set(xs)
+        ys_set = set(ys)
+        zs_set = set(zs)
+
+        # Perform set intersection with the keys of val_dict
+        keys = set(val_dict.keys()) & set(itertools.product(xs_set, ys_set, zs_set))
+        #keys = set(itertools.product(xs_set, ys_set, zs_set))
+
+        # Iterate over the keys and set the corresponding elements in the data array
+        for (x, y, z) in keys:
+            i = np.digitize(x, xs) - 1
+            j = np.digitize(y, ys) - 1
+            k = np.digitize(z, zs) - 1
+            data[i, j, k] = val_dict[(x, y, z)]
+
+        map = RegularGridInterpolator((xs, ys, zs), data, bounds_error=False, fill_value=None) # extrapolate the values outside the map
+        
+        max_z = max(pts[:,2])
+        min_z = min(pts[:,2])
+        xg = np.linspace(min_x, max_x, self.map_size[0])
+        yg = np.linspace(min_y, max_y, self.map_size[1])
+        zg = np.linspace(min_z, max_z, self.map_size[2])
+
+        X, Y, Z = np.meshgrid(xg, yg, zg, indexing='ij')
+        v = np.nan_to_num(map((X, Y, Z)), True, self.default_val)
+        v = v.ravel(order='F')
+        return xg, yg, zg, v
+
 
 class JoystickButtonInterface:
     """
