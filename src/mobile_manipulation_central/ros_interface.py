@@ -1,8 +1,10 @@
 import numpy as np
 import rospy
 import threading
+import time
 from scipy.interpolate import LinearNDInterpolator, CloughTocher2DInterpolator,RegularGridInterpolator
 from spatialmath.base import rotz
+import itertools
 
 from geometry_msgs.msg import Twist, PoseArray
 from std_msgs.msg import Float64MultiArray
@@ -104,10 +106,16 @@ class MapInterfaceNew:
 
             tsdf = msg.markers[0].points
             tsdf_vals = msg.markers[0].colors
+            t0 = time.perf_counter()
             if self.map_dim==2:
                 map = self._create_map_2d(tsdf, tsdf_vals)  
             elif self.map_dim==3:
-                map = self._create_map_3d(tsdf, tsdf_vals)
+                # map = self._create_map_3d(tsdf, tsdf_vals)
+                map = self._create_map_3d_3(tsdf, tsdf_vals)
+            t1 = time.perf_counter()
+            print(f"Map Update Time {t1 -t0}")
+
+
             self.mutex.acquire(blocking=True)
             self.map = map
             self.tsdf = tsdf
@@ -186,9 +194,23 @@ class MapInterfaceNew:
         return xg, yg, zg, v
     
     def _create_map_3d_3(self, tsdf, tsdf_vals):
-        pts = np.around(np.array([np.array([p.x,p.y,p.z]) for p in tsdf]), 2).reshape((len(tsdf),3))
-        vs = [c.r * self.mul for c in tsdf_vals]
-        
+        pts_orig = np.around(np.array([np.array([p.x,p.y,p.z]) for p in tsdf]), 2).reshape((len(tsdf),3))
+        vs_orig = np.array([c.r * self.mul for c in tsdf_vals]).reshape(len(tsdf_vals),1)
+        self.robot_pose_mutex.acquire(blocking=True)
+        curr_robot_pose = self.curr_robot_pose.copy()
+        self.robot_pose_mutex.release()
+        data_in = np.hstack((pts_orig, np.array(vs_orig)))
+
+        max_x = np.around(min(max(data_in[:,0]), curr_robot_pose[0,3]+self.map_coverage[0]/2), 2)
+        min_x = np.around(max(min(data_in[:,0]), curr_robot_pose[0,3]-self.map_coverage[0]/2), 2)
+        max_y = np.around(min(max(data_in[:,1]), curr_robot_pose[1,3]+self.map_coverage[1]/2), 2)
+        min_y = np.around(max(min(data_in[:,1]), curr_robot_pose[1,3]-self.map_coverage[1]/2), 2)
+    
+        # filter out the points outside the boundary
+        data_in_filtered = data_in[(data_in[:,0]>=min_x) & (data_in[:,0]<=max_x) & (data_in[:,1]>=min_y) & (data_in[:,1]<=max_y)]
+        pts = data_in_filtered[:,:3]
+        vs = data_in_filtered[:,3]
+
         xs = np.unique(pts[:,0])
         ys = np.unique(pts[:,1])
         zs = np.unique(pts[:,2])
@@ -197,12 +219,6 @@ class MapInterfaceNew:
 
         for idx in range(len(vs)):
             val_dict[(pts[idx,0],pts[idx,1],pts[idx,2])] = vs[idx]
-
-        # must make sure the xy size is smaller than the filled up regions around the robot from mapping c++ code
-        max_x = np.around(min(max(pts[:,0]), self.curr_robot_pose[0,3]+self.map_size[0]/2), 2)
-        min_x = np.around(max(min(pts[:,0]), self.curr_robot_pose[0,3]-self.map_size[0]/2), 2)
-        max_y = np.around(min(max(pts[:,1]), self.curr_robot_pose[1,3]+self.map_size[1]/2), 2)
-        min_y = np.around(max(min(pts[:,1]), self.curr_robot_pose[1,3]-self.map_size[1]/2), 2)
 
         #remove the xyz pts outside the boundary
         xs = sorted(xs[(xs>=min_x) & (xs<=max_x)])
@@ -226,6 +242,7 @@ class MapInterfaceNew:
             data[i, j, k] = val_dict[(x, y, z)]
 
         map = RegularGridInterpolator((xs, ys, zs), data, bounds_error=False, fill_value=None) # extrapolate the values outside the map
+        map((0,0,0))
         
         max_z = max(pts[:,2])
         min_z = min(pts[:,2])
