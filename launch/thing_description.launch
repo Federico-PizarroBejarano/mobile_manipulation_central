@@ -7,7 +7,7 @@
   <arg name="visual_params" default="$(find mobile_manipulation_central)/config/ur10/visual_parameters.yaml" />
   <arg name="transform_params" default="$(find mobile_manipulation_central)/config/null_transforms.yaml" />
 
-  <param name="robot_description" command="$(find xacro)/xacro '$(find mobile_manipulation_central)/urdf/xacro/thing.urdf.xacro'
+  <param name="robot_description" command="$(find xacro)/xacro '$(find mobile_manipulation_central)/urdf/xacro/thing_temp.urdf.xacro'
     kinematics_params:=$(arg kinematics_params)
     visual_params:=$(arg visual_params)
     transform_params:=$(arg transform_params)" />
