@@ -14,6 +14,8 @@ from visualization_msgs.msg import MarkerArray
 
 from mobile_manipulation_central import ros_utils
 
+from scipy.ndimage import gaussian_filter
+import skimage.restoration as sr
 
 # TODO add protections if time since last message is too large
 
@@ -87,6 +89,9 @@ class MapInterfaceNew:
             "/ridgeback/joint_states", JointState, self._joint_state_cb
         )
 
+        self.config = config["map"]
+
+
     def ready(self):
         return self.map_received and self.valid and self.joint_states_received
     
@@ -108,10 +113,9 @@ class MapInterfaceNew:
             tsdf_vals = msg.markers[0].colors
             t0 = time.perf_counter()
             if self.map_dim==2:
-                map = self._create_map_2d(tsdf, tsdf_vals)  
+                map = self._create_map_2d_filter(tsdf, tsdf_vals)  
             elif self.map_dim==3:
-                # map = self._create_map_3d(tsdf, tsdf_vals)
-                map = self._create_map_3d_3(tsdf, tsdf_vals)
+                map = self._create_map_3d_filter(tsdf, tsdf_vals)
             t1 = time.perf_counter()
             print(f"Map Update Time {t1 -t0}")
 
@@ -153,7 +157,72 @@ class MapInterfaceNew:
         v = v.ravel(order='F')
 
         return xg, yg, v
+
+    def _create_map_2d_filter(self, tsdf, tsdf_vals):
+        pts_orig = np.around(np.array([np.array([p.x,p.y]) for p in tsdf]), 2).reshape((len(tsdf),2))
+        vs_orig = np.array([c.r * self.mul for c in tsdf_vals]).reshape(len(tsdf_vals),1)
+
+        self.robot_pose_mutex.acquire(blocking=True)
+        curr_robot_pose = self.curr_robot_pose.copy()
+        self.robot_pose_mutex.release()
+        data_in = np.hstack((pts_orig, vs_orig))
+
+
+        max_x = np.around(min(max(data_in[:,0]), curr_robot_pose[0,3]+self.map_coverage[0]/2), 2)
+        min_x = np.around(max(min(data_in[:,0]), curr_robot_pose[0,3]-self.map_coverage[0]/2), 2)
+        max_y = np.around(min(max(data_in[:,1]), curr_robot_pose[1,3]+self.map_coverage[1]/2), 2)
+        min_y = np.around(max(min(data_in[:,1]), curr_robot_pose[1,3]-self.map_coverage[1]/2), 2)
     
+        # filter out the points outside the boundary
+        data_in_filtered = data_in[(data_in[:,0]>=min_x) & (data_in[:,0]<=max_x) & (data_in[:,1]>=min_y) & (data_in[:,1]<=max_y)]
+        pts = data_in_filtered[:,:2]
+        vs = data_in_filtered[:,2]
+
+        xs = np.unique(pts[:,0])
+        ys = np.unique(pts[:,1])
+
+        val_dict = {}
+
+        for idx in range(len(vs)):
+            val_dict[(pts[idx,0],pts[idx,1])] = vs[idx]
+
+        #remove the xyz pts outside the boundary
+        xs = sorted(xs[(xs>=min_x) & (xs<=max_x)])
+        ys = sorted(ys[(ys>=min_y) & (ys<=max_y)])
+
+        data = np.ones((len(xs),len(ys))) * self.default_val
+        # Convert xs, ys, and zs to sets
+        xs_set = set(xs)
+        ys_set = set(ys)
+
+        # Perform set intersection with the keys of val_dict
+        keys = set(val_dict.keys()) & set(itertools.product(xs_set, ys_set))
+
+        # Iterate over the keys and set the corresponding elements in the data array
+        for (x, y) in keys:
+            i = np.digitize(x, xs) - 1
+            j = np.digitize(y, ys) - 1
+            data[i, j] = val_dict[(x, y)]
+
+        # apply filter to smooth data
+        if self.config["filter_enabled"]:
+            if self.config["filter_type"] == "gaussian":
+                data = self.apply_gaussian_filter(data, 2)
+            elif self.config["filter_type"] == "tv":
+                data = self.apply_tv_filter(data, 1)
+
+        map = RegularGridInterpolator((xs, ys), data, bounds_error=False, fill_value=None) # extrapolate the values outside the map
+        map((0,0))
+        
+        xg = np.linspace(min_x, max_x, self.map_size[0])
+        yg = np.linspace(min_y, max_y, self.map_size[1])
+
+        xg, yg = self._get_grid_2d()
+        X, Y = np.meshgrid(xg, yg, indexing='ij')
+        v = np.nan_to_num(map((X, Y)), True, self.default_val)
+        v = v.ravel(order='F')
+        return xg, yg, v
+
     def _get_grid_2d(self):
         # Limit the map to a certain size around the robot
         self.robot_pose_mutex.acquire(blocking=True)
@@ -169,31 +238,7 @@ class MapInterfaceNew:
 
         return xg, yg
     
-    def _create_map_3d(self, tsdf, tsdf_vals):
-        pts = np.around(np.array([np.array([p.x,p.y,p.z]) for p in tsdf]), 2).reshape((len(tsdf),3))
-        vs = [c.r * self.mul for c in tsdf_vals]
-
-        self.map_ir = LinearNDInterpolator(pts, vs) # choose LinearNDInterpolator(pts, vs) or CloughTocher2DInterpolator(pts, vs) ort RegularGridInterpolator?
-        self.map_ir(0,0,0)
-
-        # Limit the map to a certain size around the robot
-        max_x = np.around(min(max(pts[:,0]), self.curr_robot_pose[0,3]+self.map_size[0]/2), 2)
-        min_x = np.around(max(min(pts[:,0]), self.curr_robot_pose[0,3]-self.map_size[0]/2), 2)
-        max_y = np.around(min(max(pts[:,1]), self.curr_robot_pose[1,3]+self.map_size[1]/2), 2)
-        min_y = np.around(max(min(pts[:,1]), self.curr_robot_pose[1,3]-self.map_size[1]/2), 2)
-        max_z = max(pts[:,2])
-        min_z = min(pts[:,2])
-
-        xg = np.linspace(min_x, max_x, self.map_size[0])
-        yg = np.linspace(min_y, max_y, self.map_size[1])
-        zg = np.linspace(min_z, max_z, self.map_size[2])
-
-        X, Y, Z = np.meshgrid(xg, yg, zg, indexing='ij')
-        v = np.nan_to_num(self.map_ir(X, Y, Z), True, self.default_val)
-        v = v.ravel(order='F')
-        return xg, yg, zg, v
-    
-    def _create_map_3d_3(self, tsdf, tsdf_vals):
+    def _create_map_3d_filter(self, tsdf, tsdf_vals):
         pts_orig = np.around(np.array([np.array([p.x,p.y,p.z]) for p in tsdf]), 2).reshape((len(tsdf),3))
         vs_orig = np.array([c.r * self.mul for c in tsdf_vals]).reshape(len(tsdf_vals),1)
         self.robot_pose_mutex.acquire(blocking=True)
@@ -241,6 +286,13 @@ class MapInterfaceNew:
             k = np.digitize(z, zs) - 1
             data[i, j, k] = val_dict[(x, y, z)]
 
+        # apply filter to smooth data
+        if self.config["filter_enabled"]:
+            if self.config["filter_type"] == "gaussian":
+                data = self.apply_gaussian_filter(data, 2)
+            elif self.config["filter_type"] == "tv":
+                data = self.apply_tv_filter(data, 1)
+
         map = RegularGridInterpolator((xs, ys, zs), data, bounds_error=False, fill_value=None) # extrapolate the values outside the map
         map((0,0,0))
         
@@ -254,7 +306,12 @@ class MapInterfaceNew:
         v = np.nan_to_num(map((X, Y, Z)), True, self.default_val)
         v = v.ravel(order='F')
         return xg, yg, zg, v
-
+    
+    def apply_gaussian_filter(self, data, sigma):
+        return gaussian_filter(data, sigma)
+    
+    def apply_tv_filter(self, data, weight):
+        return sr.denoise_tv_chambolle(data, weight=weight)
 
 class JoystickButtonInterface:
     """
