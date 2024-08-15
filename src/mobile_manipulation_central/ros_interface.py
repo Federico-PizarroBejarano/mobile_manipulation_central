@@ -63,7 +63,8 @@ class MapInterface:
 
 class MapInterfaceNew:
     """
-        ROS interface for receiving and post-processing maps
+        ROS interface for receiving and post-processing maps.
+        Global tsdf map is received and used to create a local map centered at the robot.
     """
 
     def __init__(self, config, topic_name: str="/pocd_slam_node/occupied_ef_dist_nodes"):
