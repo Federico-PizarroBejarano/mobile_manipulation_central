@@ -207,11 +207,11 @@ class MapInterfaceNew:
         # apply filter to smooth data
         if self.config["filter_enabled"]:
             if self.config["filter_type"] == "gaussian":
-                data = self.apply_gaussian_filter(data, 2)
+                data = self.apply_gaussian_filter(data, self.config["guassian_filter_sigma"])
             elif self.config["filter_type"] == "tv":
-                data = self.apply_tv_filter(data, 1)
+                data = self.apply_tv_filter(data, self.config["tv_filter_weight"])
 
-        map = RegularGridInterpolator((xs, ys), data, bounds_error=False, fill_value=None) # extrapolate the values outside the map
+        map = RegularGridInterpolator((xs, ys), data, method="linear", bounds_error=False, fill_value=None) # extrapolate the values outside the map
         map((0,0))
         
         xg = np.linspace(min_x, max_x, self.map_size[0])
@@ -289,11 +289,11 @@ class MapInterfaceNew:
         # apply filter to smooth data
         if self.config["filter_enabled"]:
             if self.config["filter_type"] == "gaussian":
-                data = self.apply_gaussian_filter(data, 2)
+                data = self.apply_gaussian_filter(data, self.config["guassian_filter_sigma"])
             elif self.config["filter_type"] == "tv":
-                data = self.apply_tv_filter(data, 1)
+                data = self.apply_tv_filter(data, self.config["tv_filter_weight"])
 
-        map = RegularGridInterpolator((xs, ys, zs), data, bounds_error=False, fill_value=None) # extrapolate the values outside the map
+        map = RegularGridInterpolator((xs, ys, zs), data,method="linear", bounds_error=False, fill_value=None) # extrapolate the values outside the map
         map((0,0,0))
         
         max_z = max(pts[:,2])
