@@ -2,8 +2,9 @@
 """Send a constant velocity to a single joint for a given duration to test the system response."""
 import numpy as np
 import rospy
+import argparse
 
-import mobile_manipulation_central as mm
+from mobile_manipulation_central import MobileManipulatorROSInterface
 
 VELOCITY = 0.5
 DURATION = 1.0
@@ -24,7 +25,7 @@ def main():
 
     rospy.init_node("velocity_test")
 
-    robot = mm.MobileManipulatorROSInterface()
+    robot = MobileManipulatorROSInterface()
 
     # wait until robot feedback has been received
     rate = rospy.Rate(125)
@@ -38,8 +39,11 @@ def main():
     if args.dry_run:
         print(cmd_vel)
     else:
-        robot.publish_cmd_vel(cmd_vel)
-    rospy.sleep(DURATION)
+        t_init = rospy.get_time()
+        while not rospy.is_shutdown() and rospy.get_time() - t_init < DURATION:
+            robot.publish_cmd_vel(cmd_vel)
+            rate.sleep()
+
     robot.brake()
 
 
