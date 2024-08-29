@@ -68,9 +68,10 @@ class MapInterfaceNew:
     """
 
     def __init__(self, config, topic_name: str="/pocd_slam_node/occupied_ef_dist_nodes"):
-        self.map_sub = rospy.Subscriber(topic_name, MarkerArray, self._map_cb)
+        self.map_sub = rospy.Subscriber(topic_name, MarkerArray, self._map_cb, queue_size=1)
         self.mutex = threading.Lock()
         self.robot_pose_mutex = threading.Lock()
+        self.topic_name = topic_name
 
         self.map_received = False
         self.joint_states_received = False
@@ -92,6 +93,29 @@ class MapInterfaceNew:
 
         self.config = config["map"]
 
+        if "offline_map" in self.config.keys() and self.config["offline_map"]["enabled"]:
+            bag_file = self.config["offline_map"]["path"]
+            map_msg, map_msg_time = ros_utils.extract_last_message(bag_file, self.topic_name)
+            ridgeback_joint_state_msg, time_diff = ros_utils.extract_closest_message(bag_file, "/ridgeback/joint_states",map_msg_time)
+            self._joint_state_cb(ridgeback_joint_state_msg)
+            self._map_cb(map_msg)
+
+            if self.ready():
+                print("Initialized Map Interface with Offline Map at {}".format(bag_file))
+                print("Map msg extract at time {}s".format(map_msg_time.to_sec()))
+                print("Joint state msg extracted with a time difference of {}s".format(time_diff))
+            else:
+                print("Offline map initialization failed")
+            
+            self.offline_map_msg = map_msg
+            dt_pub = 1./ 1
+            dt_pub_sec = int(dt_pub)
+            dt_pub_nsec = int((dt_pub - dt_pub_sec) * 1e9)
+            self.map_timer = rospy.Timer(rospy.Duration(dt_pub_sec, dt_pub_nsec), self._update_map)
+    
+    def _update_map(self, event):
+        print(rospy.get_time())
+        self._map_cb(self.offline_map_msg)
 
     def ready(self):
         return self.map_received and self.valid and self.joint_states_received
@@ -286,7 +310,8 @@ class MapInterfaceNew:
             j = np.digitize(y, ys) - 1
             k = np.digitize(z, zs) - 1
             data[i, j, k] = val_dict[(x, y, z)]
-
+        # if self.ready():
+        #     return self.map
         # apply filter to smooth data
         if self.config["filter_enabled"]:
             if self.config["filter_type"] == "gaussian":
