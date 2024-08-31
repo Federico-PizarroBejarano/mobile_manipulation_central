@@ -13,6 +13,7 @@ from geometry_msgs.msg import TransformStamped
 from visualization_msgs.msg import MarkerArray
 
 from mobile_manipulation_central import ros_utils
+from voxblox_msgs.msg import MapGrid
 
 from scipy.ndimage import gaussian_filter
 import skimage.restoration as sr
@@ -338,6 +339,86 @@ class MapInterfaceNew:
     
     def apply_tv_filter(self, data, weight):
         return sr.denoise_tv_chambolle(data, weight=weight)
+
+class MapGridInterface:
+    """
+        ROS interface for receiving maps
+    """
+
+    def __init__(self, config, topic_name="/pocd_slam_node/occupied_ef_map_grid_nodes"):
+        print(topic_name)
+        self.map_sub = rospy.Subscriber(topic_name, MapGrid, self._map_cb)
+        self.mutex = threading.Lock()
+        self.robot_pose_mutex = threading.Lock()
+        self.xg = None
+        self.yg = None
+        self.zg = None
+        self.v = None
+        self.map = None
+        self.map_msg_received = False
+        self.map_updated = False
+
+        self.map_coverage = np.array(config["map"]["map_coverage"])
+        self.default_val = config["map"]["default_val"]
+        self.voxel_size = config["map"]["voxel_size"]
+        self.map_size = np.ceil(self.map_coverage / self.voxel_size).astype(int)
+        self.map_dim = self.map_size.size
+
+        self.config = config["map"]
+    
+    def ready(self):
+        return self.map_msg_received
+    
+    def get_map(self):
+        if self.map_updated:
+            t00 = time.perf_counter()
+
+            self.mutex.acquire(blocking=True)
+            xg_copy = self.xg.copy()
+            yg_copy = self.yg.copy()
+            zg_copy = self.zg.copy()
+            v_copy = self.v.copy()
+
+            self.map_updated = False
+            self.mutex.release()
+            t0 = time.perf_counter()
+            map = self._process_map_data(xg_copy, yg_copy, zg_copy, v_copy)
+            t1 = time.perf_counter()
+            print("Map post processing time: {}".format(t1 - t0))
+            print("Get Map time: {}".format(t1 - t00))
+
+
+            return True, map
+        else:
+            return False, None
+        
+    def _process_map_data(self, xg, yg, zg, v):
+        data = v.reshape((len(xg), len(yg), len(zg)), order='F')
+        map = RegularGridInterpolator((xg, yg, zg), data,method="linear", bounds_error=False, fill_value=None) # extrapolate the values outside the map
+
+        xg_n = np.linspace(np.min(xg), np.max(xg), self.map_size[0])
+        yg_n = np.linspace(np.min(yg), np.max(yg), self.map_size[1])
+        zg_n = np.linspace(np.min(zg), np.max(zg), self.map_size[2])
+
+        X, Y, Z = np.meshgrid(xg_n, yg_n, zg_n, indexing='ij')
+        v = np.nan_to_num(map((X, Y, Z)), True, self.default_val)
+        v = v.ravel(order='F')
+
+        return xg_n, yg_n, zg_n, v
+
+    def _map_cb(self, msg):
+        if len(msg.xg) > 0 and len(msg.yg)>0 and len(msg.zg)>0:
+            self.mutex.acquire(blocking=True)
+            self.xg = np.array(msg.xg)
+            self.yg= np.array(msg.yg)
+            self.zg = np.array(msg.zg)
+            self.v = np.array(msg.vg)
+
+            self.map_updated = True
+            self.mutex.release()
+
+
+            self.map_msg_received = True
 
 class JoystickButtonInterface:
     """
