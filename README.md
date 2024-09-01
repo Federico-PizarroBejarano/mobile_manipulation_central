@@ -204,6 +204,16 @@ files (for acceleration), the joint limits are:
   rosrun controller_manager controller_manager start <controller_name>
   rosrun controller_manager controller_manager stop <controller_name>
   ```
+### Access onboard computers
+To access the Ridgeback Computer
+```
+ssh administrator@192.168.131.1 (password: clearpath)
+```
+To access the UR10 Computer
+```
+ssh root@192.168.131.40 (password: easybot)
+```
+
 
 ### Check Ridgeback battery voltage
 When connected to the Ridgeback, do:
