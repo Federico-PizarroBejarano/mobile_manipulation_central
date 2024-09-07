@@ -20,7 +20,7 @@ class RidgebackViconEstimatorNode {
     bool start(ros::NodeHandle& nh) {
         std::string base_vicon_topic;
         nh.param<std::string>("base_vicon_topic", base_vicon_topic,
-                              "/vicon/ThingBase_2/ThingBase_2");
+                              "/vicon/ThingBase_3/ThingBase_3");
         ridgeback_vicon_sub = nh.subscribe(
             base_vicon_topic, 1,
             &RidgebackViconEstimatorNode::ridgeback_vicon_cb, this);
