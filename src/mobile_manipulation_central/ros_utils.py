@@ -3,7 +3,7 @@ import numpy as np
 from spatialmath import UnitQuaternion
 from spatialmath.base import qslerp
 import xacro
-
+import rosbag
 
 UR10_JOINT_NAMES = [
     "ur10_arm_shoulder_pan_joint",
@@ -38,6 +38,32 @@ def parse_time(msgs, normalize_time=True, t0=None):
             t -= t[0]
     return t
 
+def parse_ridgeback_odom_msg(msg):
+    t = msg_time(msg)
+    v = msg.twist.twist.linear
+    omega = msg.twist.twist.angular
+
+    return t, [v.x, v.y, v.z], [omega.x, omega.y, omega.z]
+
+def parse_ridgeback_odom_msgs(msgs, normalize_time=False):
+    """Parse a list of UR10 JointState messages.
+
+    If normalize_time=True, the time array is shifted so that t[0] = 0."""
+    ts = []
+    vs = []
+    omegas = []
+
+    for msg in msgs:
+        t, v, omega = parse_ridgeback_odom_msg(msg)
+        ts.append(t)
+        vs.append(v)
+        omegas.append(omega)
+
+    ts = np.array(ts)
+    if normalize_time:
+        ts -= ts[0]
+
+    return ts, np.array(vs), np.array(omegas)
 
 def parse_ur10_joint_state_msg(msg):
     """Return a tuple (t, q, v) of time, configuration, velocity parsed from the
@@ -298,3 +324,28 @@ def compile_xacro(xacro_path):
 
 def vicon_topic_name(name):
     return "/".join(["/vicon", name, name])
+
+def extract_last_message(bag_file, topic_name):
+    last_msg = None
+    last_msg_time = None
+
+    with rosbag.Bag(bag_file, 'r') as bag:
+        for topic, msg, t in bag.read_messages(topics=[topic_name]):
+            last_msg = msg
+            last_msg_time = t
+
+    return last_msg, last_msg_time
+
+def extract_closest_message(bag_file, topic_name, target_time):
+    closest_msg = None
+    closest_time_diff = None
+
+    with rosbag.Bag(bag_file, 'r') as bag:
+        for topic, msg, t in bag.read_messages(topics=[topic_name]):
+            time_diff = abs((t - target_time).to_sec())
+            
+            if closest_time_diff is None or time_diff < closest_time_diff:
+                closest_msg = msg
+                closest_time_diff = time_diff
+
+    return closest_msg, time_diff
