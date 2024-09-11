@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   sensor_msgs
   urdf
+  tf
 )
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
@@ -76,6 +77,11 @@ link_directories(
 
 add_executable(ridgeback_vicon_estimator_node src/ridgeback_vicon_estimator_node.cpp)
 target_link_libraries(ridgeback_vicon_estimator_node
+  ${catkin_LIBRARIES}
+)
+
+add_executable(ridgeback_tf_estimator_node src/ridgeback_tf_estimator_node.cpp)
+target_link_libraries(ridgeback_tf_estimator_node
   ${catkin_LIBRARIES}
 )
 
