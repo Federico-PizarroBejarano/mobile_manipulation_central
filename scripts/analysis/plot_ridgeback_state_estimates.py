@@ -21,15 +21,16 @@ def main():
     tb_ests, qb_ests, vb_ests = ros_utils.parse_ridgeback_joint_state_msgs(est_msgs)
     vb_nums = np.diff(qbs, axis=0).T/np.diff(tbs)
     vb_nums = vb_nums.T
-    tbs = tbs - tbs[0]
+    if (len(tbs) > 0):
+        tbs = tbs - tbs[0]
     tb_ests = tb_ests - tb_ests[0]
 
     # TODO trim messages to only start once we get a command
-
     plt.figure()
-    plt.plot(tbs, qbs[:, 0], label="x_vicon")
-    plt.plot(tbs, qbs[:, 1], label="y_vicon")
-    plt.plot(tbs, qbs[:, 2], label="θ_vicon")
+    if (len(tbs) > 0):
+        plt.plot(tbs, qbs[:, 0], label="x_vicon")
+        plt.plot(tbs, qbs[:, 1], label="y_vicon")
+        plt.plot(tbs, qbs[:, 2], label="θ_vicon")
     plt.plot(tb_ests, qb_ests[:, 0], label="x_est")
     plt.plot(tb_ests, qb_ests[:, 1], label="y_est")
     plt.plot(tb_ests, qb_ests[:, 2], label="θ_est")
@@ -40,9 +41,10 @@ def main():
     plt.grid()
 
     plt.figure()
-    plt.plot(tbs[:-1], vb_nums[:, 0], label="vx_vicon")
-    plt.plot(tbs[:-1], vb_nums[:, 1], label="vy_vicon")
-    plt.plot(tbs[:-1], vb_nums[:, 2], label="vθ_vicon")
+    if (len(tbs) > 0):
+        plt.plot(tbs[:-1], vb_nums[:, 0], label="vx_vicon")
+        plt.plot(tbs[:-1], vb_nums[:, 1], label="vy_vicon")
+        plt.plot(tbs[:-1], vb_nums[:, 2], label="vθ_vicon")
     plt.plot(tb_ests, vb_ests[:, 0], label="vx_est")
     plt.plot(tb_ests, vb_ests[:, 1], label="vy_est")
     plt.plot(tb_ests, vb_ests[:, 2], label="ω_est")
