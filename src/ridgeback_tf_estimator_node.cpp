@@ -43,12 +43,12 @@ class RidgebackTfEstimatorNode {
         }
 
         // Get the current time and joint configuration
-        double t = ros::Time::now().toSec();
+        double t = transform.stamp_.toSec();
         Eigen::Vector3d q;
         q << transform.getOrigin().x(), transform.getOrigin().y(), tf::getYaw(transform.getRotation());
 
         // Wait until we have at least two messages so we can numerically differentiate.
-        if (msg_count >= 2) {
+        if (msg_count >= 2 && t - t_prev > 0.0) {
             double dt = t - t_prev;
 
             // Compute measured velocity via numerical differentiation
@@ -66,9 +66,11 @@ class RidgebackTfEstimatorNode {
         }
 
         // Store the current values for the next iteration
-        t_prev = t;
-        q_prev = q;
-        ++msg_count;
+        if (t - t_prev > 0.0 ){
+            t_prev = t;
+            q_prev = q;
+            ++msg_count;
+        }
     }
 
    private:
