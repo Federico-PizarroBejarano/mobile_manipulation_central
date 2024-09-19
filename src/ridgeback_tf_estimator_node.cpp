@@ -4,7 +4,7 @@
 #include <Eigen/Eigen>
 #include <mobile_manipulation_central/exponential_smoothing.h>
 #include <mobile_manipulation_central/wrap.h>
-
+#include <iostream>
 // The node listens to tf transforms for the Ridgeback base and
 // converts it into a JointState message which includes a numerically
 // differentiated and filtered velocity estimate on (x, y, yaw).
@@ -44,8 +44,11 @@ class RidgebackTfEstimatorNode {
 
         // Get the current time and joint configuration
         double t = transform.stamp_.toSec();
+        double t_now = ros::Time::now().toSec();
+        // std::cout << "Time delay: " << t_now - t;
         Eigen::Vector3d q;
         q << transform.getOrigin().x(), transform.getOrigin().y(), tf::getYaw(transform.getRotation());
+        bool v_valid = true;
 
         // Wait until we have at least two messages so we can numerically differentiate.
         if (msg_count >= 2 && t - t_prev > 0.0) {
@@ -56,17 +59,32 @@ class RidgebackTfEstimatorNode {
             delta(2) = mm::wrap_to_pi(delta(2));
             Eigen::Vector3d v_measured = delta / dt;
 
-            // Filter velocity
-            Eigen::Vector3d v_filtered;
-            v_filtered << linear_velocity_filter.next(v_measured.head(2), dt),
-                angular_velocity_filter.next(v_measured(2), dt);
+            // Check if velocity is valid
+            if (v_measured(0) > 2.0 || v_measured(0) < -2.0){
+                v_valid = false;
+            }
 
-            // Publish the joint states
-            publish_ridgeback_joint_states(q, v_filtered);
+            if (v_measured(1) > 2.0 || v_measured(1) < -2.0){
+                v_valid = false;
+            }
+
+            if (v_measured(1) > 3 || v_measured(1) < -3){
+                v_valid = false;
+            }
+
+            if(v_valid){
+                // Filter velocity
+                Eigen::Vector3d v_filtered;
+                v_filtered << linear_velocity_filter.next(v_measured.head(2), dt),
+                    angular_velocity_filter.next(v_measured(2), dt);
+
+                // Publish the joint states
+                publish_ridgeback_joint_states(q, v_filtered);
+            }
         }
 
         // Store the current values for the next iteration
-        if (t - t_prev > 0.0 ){
+        if (t - t_prev > 0.0 && v_valid){
             t_prev = t;
             q_prev = q;
             ++msg_count;
