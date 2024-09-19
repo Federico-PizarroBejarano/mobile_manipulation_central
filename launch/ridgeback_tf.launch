@@ -11,7 +11,7 @@
   <!-- Estimation of Ridgeback joint state from tf messages. -->
   <node pkg="mobile_manipulation_central" type="ridgeback_tf_estimator_node" name="ridgeback_tf_estimator_node" required="true" output="screen" unless="$(arg use_odom)">
     <param name="target_frame_id" value="base_link"/>
-    <param name="source_frame_id" value="world"/>
+    <param name="source_frame_id" value="my_world"/>
     <param name="tau_linear" value="0.045"/>
     <param name="tau_angular" value="0.025"/>
     <param name="update_rate" value="50"/>

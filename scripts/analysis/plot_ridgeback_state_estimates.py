@@ -21,18 +21,18 @@ def main():
     tb_ests, qb_ests, vb_ests = ros_utils.parse_ridgeback_joint_state_msgs(est_msgs)
     vb_nums = np.diff(qbs, axis=0).T/np.diff(tbs)
     vb_nums = vb_nums.T
+
     tbs = tbs - tbs[0]
-    tb_ests = tb_ests - tb_ests[0]
+    tb_ests = tb_ests - tb_ests[0] + tbs[0]
 
     # TODO trim messages to only start once we get a command
-
     plt.figure()
-    plt.plot(tbs, qbs[:, 0], label="x_vicon")
-    plt.plot(tbs, qbs[:, 1], label="y_vicon")
-    plt.plot(tbs, qbs[:, 2], label="θ_vicon")
-    plt.plot(tb_ests, qb_ests[:, 0], label="x_est")
-    plt.plot(tb_ests, qb_ests[:, 1], label="y_est")
-    plt.plot(tb_ests, qb_ests[:, 2], label="θ_est")
+    plt.plot(tbs, qbs[:, 0]-qbs[0, 0], label="x_vicon")
+    plt.plot(tbs, qbs[:, 1]-qbs[0, 1], label="y_vicon")
+    plt.plot(tbs, qbs[:, 2]-qbs[0, 2], label="θ_vicon")
+    plt.plot(tb_ests, qb_ests[:, 0]-qb_ests[0, 0], label="x_est")
+    plt.plot(tb_ests, qb_ests[:, 1]-qb_ests[0, 1], label="y_est")
+    plt.plot(tb_ests, qb_ests[:, 2]-qb_ests[0, 2], label="θ_est")
     plt.title("Ridgeback Joint Positions")
     plt.xlabel("Time (s)")
     plt.ylabel("Joint position")
