@@ -349,3 +349,31 @@ def extract_closest_message(bag_file, topic_name, target_time):
                 closest_time_diff = time_diff
 
     return closest_msg, time_diff
+
+def parse_tf_messages(tf_messages, parent_frame, child_frame):
+    times = []
+    positions = []
+    orientations = []
+
+    for msg in tf_messages:
+        for transform in msg.transforms:
+            # Check if the frame IDs match the given parent and child frames
+            if transform.header.frame_id == parent_frame and transform.child_frame_id == child_frame:
+                # Extract the message time (in seconds)
+                msg_time = transform.header.stamp.to_sec()
+                times.append(msg_time)
+
+                # Extract the position (x, y, z)
+                position = transform.transform.translation
+                positions.append([position.x, position.y, position.z])
+
+                # Extract the orientation (quaternion: x, y, z, w)
+                orientation = transform.transform.rotation
+                orientations.append([orientation.x, orientation.y, orientation.z, orientation.w])
+
+    # Convert lists to numpy arrays
+    times_array = np.array(times)
+    positions_array = np.array(positions)
+    orientations_array = np.array(orientations)
+
+    return times_array, positions_array, orientations_array
