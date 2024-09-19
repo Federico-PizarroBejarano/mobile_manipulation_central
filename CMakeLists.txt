@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   geometry_msgs
   sensor_msgs
+  nav_msgs
   urdf
   tf
 )
@@ -82,6 +83,11 @@ target_link_libraries(ridgeback_vicon_estimator_node
 
 add_executable(ridgeback_tf_estimator_node src/ridgeback_tf_estimator_node.cpp)
 target_link_libraries(ridgeback_tf_estimator_node
+  ${catkin_LIBRARIES}
+)
+
+add_executable(ridgeback_tf_odom_estimator_node src/ridgeback_tf_odom_estimator_node.cpp)
+target_link_libraries(ridgeback_tf_odom_estimator_node
   ${catkin_LIBRARIES}
 )
 
