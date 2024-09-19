@@ -25,8 +25,6 @@ class RidgebackTfOdomEstimatorNode {
         // Retrieve parameters, including the frame id with a default value
         nh.param<std::string>("target_frame_id", target_frame_id_, "base_link");
         nh.param<std::string>("source_frame_id", source_frame_id_, "world");
-        nh.param<double>("tau_linear", tau_linear, 0.045);
-        nh.param<double>("tau_angular", tau_angular, 0.025);
         nh.param<std::string>("odom_topic", odom_topic_, "/odometry/filtered");
 
         ridgeback_joint_states_pub =
@@ -34,11 +32,6 @@ class RidgebackTfOdomEstimatorNode {
         ridgeback_odom_sub = nh.subscribe(
             odom_topic_, 1,
             &RidgebackTfOdomEstimatorNode::ridgeback_odom_cb, this);
-
-        // Velocity is assumed to be 0 initially. Values for tau taken from
-        // dsl__estimation__vicon package.
-        linear_velocity_filter.init(tau_linear, Eigen::Vector2d::Zero());
-        angular_velocity_filter.init(tau_angular, 0);
 
         initial_state_ready = false;
         calibration_ready = false;
@@ -256,12 +249,6 @@ class RidgebackTfOdomEstimatorNode {
     bool calibration_ready;
     bool initial_state_ready;
 
-
-    // Exponential smoothing filters to remove noise from numerically
-    // differentiated velocity.
-    mm::ExponentialSmoother<double> angular_velocity_filter;
-    mm::ExponentialSmoother<Eigen::Vector2d> linear_velocity_filter;
-
     // Number of messages received.
     uint32_t tf_msg_count = 0;
     uint32_t odom_msg_count = 0;
@@ -274,10 +261,6 @@ class RidgebackTfOdomEstimatorNode {
     std::string target_frame_id_;
     std::string source_frame_id_;
     std::string odom_topic_;
-
-    // exponetial filter param
-    double tau_linear;
-    double tau_angular;
 
 };  // class RidgebackTfOdomEstimatorNode
 
