@@ -1,3 +1,4 @@
+#include <iostream>
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <nav_msgs/Odometry.h>
@@ -58,9 +59,23 @@ class RidgebackTfOdomEstimatorNode {
         }
     }
 
-    void ridgeback_odom_cb(const nav_msgs::Odometry &msg){
-        double t = msg.header.stamp.toSec();
+    void ridgeback_odom_cb(const nav_msgs::Odometry &msg) {
+        check_tf();
+
+        if (!initial_state_ready && new_tf_available){
+            t_prev = t_tf;
+            q_prev = q_tf;
+            q_curr = q_tf;
+            initial_state_ready = true; 
+            ROS_INFO_STREAM("TF_ODOM_ESTIMATOR: Initialized with first TF");
+        }
+
+        if (!initial_state_ready) {
+            return;
+        }
+
         ros::Time msg_stamp = msg.header.stamp;
+        double t = msg_stamp.toSec();
         Eigen::Vector3d vb;
         vb << msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.angular.z;
         t_odom_hist.add(t);
@@ -68,23 +83,15 @@ class RidgebackTfOdomEstimatorNode {
         q_hist.add(q_curr);
         ++odom_msg_count;
 
-        check_tf();
-
         // calibration
         if (!calibration_ready){
             calibration_ready = calculate_odom_bias();
+            if (calibration_ready){
+                ROS_INFO_STREAM("TF_ODOM_ESTIMATOR: Calibration ready");
+            }
         }
 
-        // initialize with tf pose
-        if (!initial_state_ready && new_tf_available){
-
-            t_prev = t_tf;
-            q_prev = q_tf;
-            initial_state_ready = true;
-            ROS_INFO_STREAM("TF_ODOM_ESTIMATOR: Initialized");
-        }
-
-        if (calibration_ready && initial_state_ready){
+        if (calibration_ready){
             // prediction
             v_curr = to_world_frame(vb - v_o, q_prev(2));
             q_curr = propergate_motion_model(q_prev, v_curr, t-t_prev);
