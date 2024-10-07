@@ -4,6 +4,7 @@
 <launch>
   <arg name="use_joy_stick_relay" default="false" doc="use joy stick for emergency stop"/>
   <arg name="use_tf" default="false" doc="use tf for ridgeback states"/>
+  <arg name="use_odom" default="false" doc="use odom from ridgeback"/>
 
   <include file="$(find mobile_manipulation_central)/launch/ridgeback_vicon.launch" pass_all_args="true"  unless="$(arg use_tf)"/>
   <include file="$(find mobile_manipulation_central)/launch/ridgeback_tf.launch" pass_all_args="true"  if="$(arg use_tf)"/>
