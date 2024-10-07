@@ -3,6 +3,7 @@
 #include <sensor_msgs/JointState.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 #include <tf/tf.h>
 #include <ros/console.h>
 #include <Eigen/Eigen>
@@ -29,6 +30,14 @@ class RidgebackTfOdomEstimatorNode {
         nh.param<double>("tau_linear", tau_linear, 0.045);
         nh.param<double>("tau_angular", tau_angular, 0.025);
         nh.param<std::string>("odom_topic", odom_topic_, "/odometry/filtered");
+        
+        std::string base_vicon_topic;
+        nh.param<std::string>("base_vicon_topic", base_vicon_topic,
+                              "/vicon/ThingBase_3/ThingBase_3");
+
+        ridgeback_vicon_sub = nh.subscribe(
+            base_vicon_topic, 1,
+            &RidgebackTfOdomEstimatorNode::vicon_cb, this);
 
         ridgeback_joint_states_pub =
             nh.advertise<sensor_msgs::JointState>("/ridgeback/joint_states", 1);
@@ -57,6 +66,15 @@ class RidgebackTfOdomEstimatorNode {
         else{
             return false;
         }
+    }
+
+    void vicon_cb(const geometry_msgs::TransformStamped& msg) {
+        tf::StampedTransform transform;
+        tf::transformStampedMsgToTF(msg, transform);
+        transform.frame_id_ = "my_world";
+        transform.child_frame_id_ = "vicon_base_link";
+        transform.getOrigin().setZ(0.0);
+        tf_br.sendTransform(transform);
     }
 
     void ridgeback_odom_cb(const nav_msgs::Odometry &msg) {
@@ -285,6 +303,10 @@ class RidgebackTfOdomEstimatorNode {
     // exponetial filter param
     double tau_linear;
     double tau_angular;
+
+    ros::Subscriber ridgeback_vicon_sub;
+    // tf broadcast
+    tf::TransformBroadcaster tf_br;
 
 };  // class RidgebackTfOdomEstimatorNode
 
