@@ -77,12 +77,14 @@ def parse_ur10_joint_state_msg(msg):
     # UR10_JOINT_INDEX_MAP
     q = np.zeros(6)
     v = np.zeros(6)
+    eff = np.zeros(6)
     for i in range(len(msg.position)):
         j = UR10_JOINT_INDEX_MAP[msg.name[i]]
         q[j] = msg.position[i]
         v[j] = msg.velocity[i]
+        eff[j] = msg.effort[i]
 
-    return t, q, v
+    return t, q, v, eff
 
 
 def parse_ur10_joint_state_msgs(msgs, normalize_time=True):
@@ -92,18 +94,20 @@ def parse_ur10_joint_state_msgs(msgs, normalize_time=True):
     ts = []
     qs = []
     vs = []
+    effs = []
 
     for msg in msgs:
-        t, q, v = parse_ur10_joint_state_msg(msg)
+        t, q, v, eff = parse_ur10_joint_state_msg(msg)
         ts.append(t)
         qs.append(q)
         vs.append(v)
+        effs.append(eff)
 
     ts = np.array(ts)
     if normalize_time:
         ts -= ts[0]
 
-    return ts, np.array(qs), np.array(vs)
+    return ts, np.array(qs), np.array(vs), np.array(effs)
 
 
 def trim_msgs(msgs, t0=None, t1=None):

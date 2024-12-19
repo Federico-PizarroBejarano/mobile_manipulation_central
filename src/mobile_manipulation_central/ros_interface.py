@@ -586,7 +586,7 @@ class UR10ROSInterface(RobotROSInterface):
 
     def _joint_state_cb(self, msg):
         """Callback for arm joint feedback."""
-        _, self.q, self.v = ros_utils.parse_ur10_joint_state_msg(msg)
+        _, self.q, self.v,_ = ros_utils.parse_ur10_joint_state_msg(msg)
         self.joint_states_received = True
 
     def publish_cmd_vel(self, cmd_vel, bodyframe=None):
