@@ -3,6 +3,7 @@
 #include <sensor_msgs/JointState.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_listener.h>
+#include <tf/transform_broadcaster.h>
 #include <tf/tf.h>
 #include <ros/console.h>
 #include <Eigen/Eigen>
@@ -19,7 +20,7 @@ class RidgebackTfOdomEstimatorNode {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    RidgebackTfOdomEstimatorNode(): t_odom_hist(40), vb_odom_hist(40),q_hist(40) {}
+    RidgebackTfOdomEstimatorNode(): t_odom_hist(40), vb_odom_hist(40),q_hist(40),tau_linear(0.045), tau_angular(0.025){}
 
     // Start the node.
     bool start(ros::NodeHandle& nh) {
@@ -27,12 +28,25 @@ class RidgebackTfOdomEstimatorNode {
         nh.param<std::string>("target_frame_id", target_frame_id_, "base_link");
         nh.param<std::string>("source_frame_id", source_frame_id_, "world");
         nh.param<std::string>("odom_topic", odom_topic_, "/odometry/filtered");
+        
+        std::string base_vicon_topic;
+        nh.param<std::string>("base_vicon_topic", base_vicon_topic,
+                              "/vicon/ThingBase_3/ThingBase_3");
+
+        ridgeback_vicon_sub = nh.subscribe(
+            base_vicon_topic, 1,
+            &RidgebackTfOdomEstimatorNode::vicon_cb, this);
 
         ridgeback_joint_states_pub =
             nh.advertise<sensor_msgs::JointState>("/ridgeback/joint_states", 1);
         ridgeback_odom_sub = nh.subscribe(
             odom_topic_, 1,
             &RidgebackTfOdomEstimatorNode::ridgeback_odom_cb, this);
+
+        // Velocity is assumed to be 0 initially. Values for tau taken from
+        // dsl__estimation__vicon package.
+        linear_velocity_filter.init(tau_linear, Eigen::Vector2d::Zero());
+        angular_velocity_filter.init(tau_angular, 0);
 
         initial_state_ready = false;
         calibration_ready = false;
@@ -50,6 +64,15 @@ class RidgebackTfOdomEstimatorNode {
         else{
             return false;
         }
+    }
+
+    void vicon_cb(const geometry_msgs::TransformStamped& msg) {
+        tf::StampedTransform transform;
+        tf::transformStampedMsgToTF(msg, transform);
+        transform.frame_id_ = "my_world";
+        transform.child_frame_id_ = "vicon_base_link";
+        transform.getOrigin().setZ(0.0);
+        tf_br.sendTransform(transform);
     }
 
     void ridgeback_odom_cb(const nav_msgs::Odometry &msg) {
@@ -71,6 +94,14 @@ class RidgebackTfOdomEstimatorNode {
         double t = msg_stamp.toSec();
         Eigen::Vector3d vb;
         vb << msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.angular.z;
+        if (odom_msg_count>=2){
+            double dt = t - t_prev;
+            // Filter velocity
+            Eigen::Vector3d vb_filtered;
+            vb_filtered << linear_velocity_filter.next(vb.head(2), dt),
+                angular_velocity_filter.next(vb(2), dt);
+            vb = vb_filtered;
+        }
         t_odom_hist.add(t);
         vb_odom_hist.add(vb);
         q_hist.add(q_curr);
@@ -268,6 +299,19 @@ class RidgebackTfOdomEstimatorNode {
     std::string target_frame_id_;
     std::string source_frame_id_;
     std::string odom_topic_;
+
+    // Exponential smoothing filters to remove noise from numerically
+    // differentiated velocity.
+    mm::ExponentialSmoother<double> angular_velocity_filter;
+    mm::ExponentialSmoother<Eigen::Vector2d> linear_velocity_filter;
+
+    // exponetial filter param
+    double tau_linear;
+    double tau_angular;
+
+    ros::Subscriber ridgeback_vicon_sub;
+    // tf broadcast
+    tf::TransformBroadcaster tf_br;
 
 };  // class RidgebackTfOdomEstimatorNode
 
