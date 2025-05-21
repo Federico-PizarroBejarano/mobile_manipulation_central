@@ -20,7 +20,7 @@ class RidgebackTfOdomEstimatorNode {
    public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    RidgebackTfOdomEstimatorNode(): t_odom_hist(40), vb_odom_hist(40),q_hist(40),tau_linear(0.045), tau_angular(0.025){}
+    RidgebackTfOdomEstimatorNode(): t_odom_hist(40), vb_odom_hist(40),q_hist(40),tau_linear(0.045), tau_angular(0.045){}
 
     // Start the node.
     bool start(ros::NodeHandle& nh) {
