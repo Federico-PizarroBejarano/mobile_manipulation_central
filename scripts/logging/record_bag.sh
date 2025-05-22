@@ -21,6 +21,7 @@ mkdir -p "$BAG_DIR/$1"
    --regex "/controller_tracking_pt" \
    --regex "/pocd_slam_node/occupied_ef_nodes" \
    --regex "/revis_node/tracked_objects_cloud" \
+   --regex "/planned_global_path" \
    --regex "/nbv"
 
 #rosbag record -a -o "$BAG_DIR/$1"
