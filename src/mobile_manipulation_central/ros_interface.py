@@ -26,7 +26,7 @@ class MapInterface:
     """
 
     def __init__(self, topic_name: str):
-        self.map_sub = rospy.Subscriber(topic_name, MarkerArray, self._map_cb)
+        self.map_sub = rospy.Subscriber(topic_name, MarkerArray, self._map_cb, queue_size=1)
         self.mutex = threading.Lock()
         self.map_points = None
         self.map_vals = None
@@ -50,7 +50,6 @@ class MapInterface:
             return False, None
     
     def _map_cb(self, msg):
-    
         if len(msg.markers)>0:
             self.mutex.acquire(blocking=True)
             self.map_points = msg.markers[0].points
@@ -355,6 +354,7 @@ class MapGridInterface:
         self.zg = None
         self.v = None
         self.map = None
+        self.map_time = None
         self.map_msg_received = False
         self.map_updated = False
 
@@ -388,9 +388,9 @@ class MapGridInterface:
             print("Get Map time: {}".format(t1 - t00))
 
 
-            return True, map
+            return True, map, self.map_time
         else:
-            return False, None
+            return False, None, None
         
     def _process_map_data(self, xg, yg, zg, v):
         data = v.reshape((len(xg), len(yg), len(zg)), order='F')
@@ -407,13 +407,15 @@ class MapGridInterface:
         return xg_n, yg_n, zg_n, v
 
     def _map_cb(self, msg):
+        print("Received Map with Delay {}s".format((rospy.Time.now() - msg.header.stamp).to_sec()))
+
         if len(msg.xg) > 0 and len(msg.yg)>0 and len(msg.zg)>0:
             self.mutex.acquire(blocking=True)
             self.xg = np.array(msg.xg)
             self.yg= np.array(msg.yg)
             self.zg = np.array(msg.zg)
             self.v = np.array(msg.vg)
-
+            self.map_time = msg.header.stamp.to_sec()
             self.map_updated = True
             self.mutex.release()
 
