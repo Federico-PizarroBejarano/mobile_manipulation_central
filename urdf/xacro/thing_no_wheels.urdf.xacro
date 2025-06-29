@@ -63,14 +63,14 @@ joints.
   <link name="chassis_link">
     <visual>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/body.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/body.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/body-collision.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/body-collision.stl"/>
       </geometry>
     </collision>
     <inertial>
@@ -94,7 +94,7 @@ joints.
     <visual>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/side-cover.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/side-cover.stl"/>
       </geometry>
       <material name="yellow"/>
     </visual>
@@ -103,7 +103,7 @@ joints.
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/side-cover.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/side-cover.stl"/>
       </geometry>
       <material name="yellow"/>
     </visual>
@@ -117,7 +117,7 @@ joints.
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/end-cover.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/end-cover.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
@@ -131,7 +131,7 @@ joints.
     <visual>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/end-cover.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/end-cover.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
@@ -150,7 +150,7 @@ joints.
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/lights.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/lights.stl"/>
       </geometry>
       <material name="white"/>
     </visual>
@@ -159,7 +159,7 @@ joints.
     <visual>
       <origin rpy="0 0 3.14159265359" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/lights.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/lights.stl"/>
       </geometry>
       <material name="red"/>
     </visual>
@@ -173,14 +173,14 @@ joints.
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/top.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/top.stl"/>
       </geometry>
       <material name="black"/>
     </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/ridgeback/top.stl"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/ridgeback/top.stl"/>
       </geometry>
     </collision>
   </link>
@@ -188,7 +188,7 @@ joints.
   <link name="arch_link">
     <visual>
       <geometry>
-        <mesh filename="file://$(find mobile_manipulation_central)/meshes/tor11_mech.dae"/>
+        <mesh filename="package://mobile_manipulation_central/meshes/tor11_mech.dae"/>
       </geometry>
       <material name="LightGrey">
         <color rgba="0.7 0.7 0.7 1.0"/>

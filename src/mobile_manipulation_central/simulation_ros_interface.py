@@ -86,6 +86,7 @@ class SimulatedRobotROSInterface:
         msg.name = self.joint_names
         msg.position = q
         msg.velocity = v
+        msg.effort = np.zeros_like(v)
         self.feedback_pub.publish(msg)
 
     def publish_time(self, t):
