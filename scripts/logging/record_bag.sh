@@ -16,12 +16,20 @@ mkdir -p "$BAG_DIR/$1"
    --regex "/controller_visualization_array" \
    --regex "/plan_visualization" \
    --regex "/pose_plan_visualization" \
+   --regex "/pose_path_visualization" \
+   --regex "/pose_waypoint_visualization" \
    --regex "/current_plan_visualization" \
    --regex "/controller_reference" \
    --regex "/controller_tracking_pt" \
-   --regex "/pocd_slam_node/occupied_ef_nodes" \
    --regex "/revis_node/tracked_objects_cloud" \
    --regex "/planned_global_path" \
-   --regex "/nbv"
-
+   --regex "/nbv"\
+   --regex "/camera_base/color/image_raw/compressed"\
+   --regex "/camera_hand/color/image_raw/compressed"\
+   --regex "/system_delay_diagnostics/control" \
+   --regex "/system_delay_diagnostics/slam"\
+   --regex "/system_delay_diagnostics/slam"\
+   --regex "/ground_truth_map"\
+   --regex "/revis_node/tracked_objects_label"\
+  #  --regex "/pocd_slam_node/occupied_ef_nodes" \
 #rosbag record -a -o "$BAG_DIR/$1"
