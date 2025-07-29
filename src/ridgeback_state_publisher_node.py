@@ -34,7 +34,9 @@ class RidgebackStatePublisherNode:
         self.baselink_map_tf.header.frame_id = "base_link"
         self.baselink_map_tf.child_frame_id = "world"
 
-        self.sub = rospy.Subscriber(args.joint_states_topic, JointState, self._joint_states_cb)
+        self.sub = rospy.Subscriber(args.joint_states_topic, JointState, self._joint_states_cb, queue_size=1)
+        self.last_update = -1
+        self.min_period = 0.05
 
     def _joint_states_cb(self, msg):
         '''
@@ -56,7 +58,7 @@ class RidgebackStatePublisherNode:
         self.broadcaster_static.sendTransform(self.odom_map_tf)
         '''
         # self.baselink_map_tf.header.stamp = rospy.Time.now()
-
+        # if rospy.Time.now().to_sec() - self.last_update > self.min_period:
         Twb = rotation_matrix(msg.position[2], (0,0,1))
         Twb[0, 3] = msg.position[0]
         Twb[1, 3] = msg.position[1]
@@ -71,6 +73,7 @@ class RidgebackStatePublisherNode:
         self.baselink_map_tf.transform.rotation.z = quat[2]
         self.baselink_map_tf.transform.rotation.w = quat[3]
         self.broadcaster.sendTransform(self.baselink_map_tf)
+        self.last_update = msg.header.stamp.to_sec()
 
 if __name__ == "__main__":
     rospy.init_node("ridgeback_state_publisher")

@@ -34,8 +34,8 @@ class RidgebackViconEstimatorNode {
 
         // Velocity is assumed to be 0 initially. Values for tau taken from
         // dsl__estimation__vicon package.
-        linear_velocity_filter.init(0.045, Eigen::Vector2d::Zero());
-        angular_velocity_filter.init(0.025, 0);
+        linear_velocity_filter.init(0.08, Eigen::Vector2d::Zero());
+        angular_velocity_filter.init(0.05, 0);
 
         return true;
     }
