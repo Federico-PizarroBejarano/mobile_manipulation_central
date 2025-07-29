@@ -162,6 +162,28 @@ There are some convenient scripts in the `scripts` directory:
 * `control/gripper.py` opens and closes the gripper.
 * `control/sine_trajectory` tracks a sinusoidal trajectory with a single joint.
 
+#### Connecting a third laptop
+1. Connect both the onboard and the remote laptop to the same wifi, DSL_DroneNet_5G, (ridgeback is automatically connected)
+2. Set ROS Networking params
+```
+export ROS_IP=<Remote Laptop IP>
+export ROS_MASTER_URI=http://<Ridgeback IP>:11311
+```
+3. Enable IP forwarding
+On Ridgeback
+```
+sudo sysctl -w net.ipv4.ip_forward=1
+```
+On Remote Laptop
+```
+sudo ip route add 192.168.131.0/24 via <Ridgeback IP>
+```
+4. Test connection
+```
+ping 192.168.131.100 #onboard pc
+```
+
+
 ## Tests
 
 Unit tests can be found in the `test` directory. Currently there are only
