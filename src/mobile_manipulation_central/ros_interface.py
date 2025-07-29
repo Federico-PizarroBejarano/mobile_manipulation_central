@@ -5,12 +5,13 @@ import time
 from scipy.interpolate import LinearNDInterpolator, CloughTocher2DInterpolator,RegularGridInterpolator
 from spatialmath.base import rotz
 import itertools
+import copy
 
 from geometry_msgs.msg import Twist, PoseArray
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import JointState, Joy
 from geometry_msgs.msg import TransformStamped
-from visualization_msgs.msg import MarkerArray
+from visualization_msgs.msg import MarkerArray, Marker
 
 from mobile_manipulation_central import ros_utils
 from voxblox_msgs.msg import MapGrid
@@ -421,6 +422,95 @@ class MapGridInterface:
 
 
             self.map_msg_received = True
+
+class GTMapInterface:
+    """
+        ROS interface for gt maps
+    """
+
+    def __init__(self, config, topic_name="/ground_truth_map"):
+        print(topic_name)
+        self.map_sub = rospy.Subscriber(topic_name, MarkerArray, self._map_cb)
+        self.mutex = threading.Lock()
+        self.robot_pose_mutex = threading.Lock()
+        self.xg = None
+        self.yg = None
+        self.zg = None
+        self.v = None
+        self.map = None
+        self.map_time = None
+        self.map_msg_received = False
+        self.map_updated = False
+
+        self.config = config["map"]
+
+    def ready(self):
+        return self.map_msg_received
+    
+    def get_map(self):
+        if self.map_updated:
+
+            self.mutex.acquire(blocking=True)
+            obstacle_copy = copy.deepcopy(self.obstacles)
+
+            self.map_updated = False
+            self.mutex.release()
+            map = obstacle_copy
+
+            return True, [map], self.map_time
+        else:
+            return False, None, None
+        
+    def _map_cb(self, msg):
+        obstacles = []
+        for marker in msg.markers:
+            obstacle = self.parse_marker(marker)
+            if obstacle is not None:
+                obstacles.append(obstacle)
+
+        rospy.loginfo(f"Received {len(obstacles)} obstacles")
+        # for obs in obstacles:
+        #     rospy.loginfo(obs)
+        self.mutex.acquire(blocking=True)
+        self.obstacles = obstacles
+        self.map_time = msg.markers[0].header.stamp.to_sec()
+        self.map_updated = True
+        self.mutex.release()
+        self.map_msg_received = True
+
+    def parse_marker(self, marker):
+        # Basic obstacle info
+        obstacle = {
+            "id": marker.id,
+            "ns": marker.ns,
+            "type": self.get_marker_type_name(marker.type),
+            "pose": marker.pose,
+            "size": marker.scale,
+            "color": (marker.color.r, marker.color.g, marker.color.b, marker.color.a)
+        }
+
+        if marker.type in [Marker.CUBE, Marker.SPHERE, Marker.CYLINDER]:
+            return obstacle
+        elif marker.type == Marker.MESH_RESOURCE:
+            obstacle["mesh"] = marker.mesh_resource
+            return obstacle
+        else:
+            rospy.logwarn(f"Unsupported marker type: {marker.type}")
+            return None
+
+    def get_marker_type_name(self, marker_type):
+        type_map = {
+            Marker.ARROW: "ARROW",
+            Marker.CUBE: "CUBE",
+            Marker.SPHERE: "SPHERE",
+            Marker.CYLINDER: "CYLINDER",
+            Marker.LINE_STRIP: "LINE_STRIP",
+            Marker.LINE_LIST: "LINE_LIST",
+            Marker.TRIANGLE_LIST: "TRIANGLE_LIST",
+            Marker.TEXT_VIEW_FACING: "TEXT",
+            Marker.MESH_RESOURCE: "MESH"
+        }
+        return type_map.get(marker_type, "UNKNOWN")
 
 class JoystickButtonInterface:
     """
