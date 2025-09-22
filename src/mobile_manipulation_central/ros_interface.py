@@ -408,7 +408,7 @@ class MapGridInterface:
         return xg_n, yg_n, zg_n, v
 
     def _map_cb(self, msg):
-        print("Received Map with Delay {}s".format((rospy.Time.now() - msg.header.stamp).to_sec()))
+        # print("Received Map with Delay {}s".format((rospy.Time.now() - msg.header.stamp).to_sec()))
 
         if len(msg.xg) > 0 and len(msg.yg)>0 and len(msg.zg)>0:
             self.mutex.acquire(blocking=True)
