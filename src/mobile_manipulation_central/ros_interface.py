@@ -14,7 +14,11 @@ from geometry_msgs.msg import TransformStamped
 from visualization_msgs.msg import MarkerArray, Marker
 
 from mobile_manipulation_central import ros_utils
-from voxblox_msgs.msg import MapGrid
+
+try:
+    from voxblox_msgs.msg import MapGrid
+except ImportError:
+    MapGrid = None  # voxblox not installed, mapping features disabled
 
 from scipy.ndimage import gaussian_filter
 import skimage.restoration as sr
@@ -34,10 +38,10 @@ class MapInterface:
         self.msg_received = False
         self.valid = False
         self.map_updated = False
-    
+
     def ready(self):
         return self.msg_received and self.valid
-    
+
     def get_map(self):
         if self.map_updated:
             self.mutex.acquire(blocking=True)
@@ -49,7 +53,7 @@ class MapInterface:
             return True, (map_points_copy, map_vals_copy)
         else:
             return False, None
-    
+
     def _map_cb(self, msg):
         if len(msg.markers)>0:
             self.mutex.acquire(blocking=True)
@@ -107,20 +111,20 @@ class MapInterfaceNew:
                 print("Joint state msg extracted with a time difference of {}s".format(time_diff))
             else:
                 print("Offline map initialization failed")
-            
+
             self.offline_map_msg = map_msg
             dt_pub = 1./ 1
             dt_pub_sec = int(dt_pub)
             dt_pub_nsec = int((dt_pub - dt_pub_sec) * 1e9)
             self.map_timer = rospy.Timer(rospy.Duration(dt_pub_sec, dt_pub_nsec), self._update_map)
-    
+
     def _update_map(self, event):
         print(rospy.get_time())
         self._map_cb(self.offline_map_msg)
 
     def ready(self):
         return self.map_received and self.valid and self.joint_states_received
-    
+
     def get_map(self):
         if self.ready():
             self.mutex.acquire(blocking=True)
@@ -130,16 +134,16 @@ class MapInterfaceNew:
             return True, map
         else:
             return False, None
-    
+
     def _map_cb(self, msg):
-    
+
         if len(msg.markers)>0 and self.joint_states_received:
 
             tsdf = msg.markers[0].points
             tsdf_vals = msg.markers[0].colors
             t0 = time.perf_counter()
             if self.map_dim==2:
-                map = self._create_map_2d_filter(tsdf, tsdf_vals)  
+                map = self._create_map_2d_filter(tsdf, tsdf_vals)
             elif self.map_dim==3:
                 map = self._create_map_3d_filter(tsdf, tsdf_vals)
             t1 = time.perf_counter()
@@ -168,7 +172,7 @@ class MapInterfaceNew:
 
         self.joint_states_received = True
 
-    
+
     def _create_map_2d(self, tsdf, tsdf_vals):
         pts = np.around(np.array([np.array([p.x,p.y]) for p in tsdf]), 2).reshape((len(tsdf),2))
         vs = [c.r * self.mul for c in tsdf_vals]
@@ -198,7 +202,7 @@ class MapInterfaceNew:
         min_x = np.around(max(min(data_in[:,0]), curr_robot_pose[0,3]-self.map_coverage[0]/2), 2)
         max_y = np.around(min(max(data_in[:,1]), curr_robot_pose[1,3]+self.map_coverage[1]/2), 2)
         min_y = np.around(max(min(data_in[:,1]), curr_robot_pose[1,3]-self.map_coverage[1]/2), 2)
-    
+
         # filter out the points outside the boundary
         data_in_filtered = data_in[(data_in[:,0]>=min_x) & (data_in[:,0]<=max_x) & (data_in[:,1]>=min_y) & (data_in[:,1]<=max_y)]
         pts = data_in_filtered[:,:2]
@@ -239,7 +243,7 @@ class MapInterfaceNew:
 
         map = RegularGridInterpolator((xs, ys), data, method="linear", bounds_error=False, fill_value=None) # extrapolate the values outside the map
         map((0,0))
-        
+
         xg = np.linspace(min_x, max_x, self.map_size[0])
         yg = np.linspace(min_y, max_y, self.map_size[1])
 
@@ -263,7 +267,7 @@ class MapInterfaceNew:
         yg = np.linspace(min_y, max_y, self.map_size[1])
 
         return xg, yg
-    
+
     def _create_map_3d_filter(self, tsdf, tsdf_vals):
         pts_orig = np.around(np.array([np.array([p.x,p.y,p.z]) for p in tsdf]), 2).reshape((len(tsdf),3))
         vs_orig = np.array([c.r * self.mul for c in tsdf_vals]).reshape(len(tsdf_vals),1)
@@ -276,7 +280,7 @@ class MapInterfaceNew:
         min_x = np.around(max(min(data_in[:,0]), curr_robot_pose[0,3]-self.map_coverage[0]/2), 2)
         max_y = np.around(min(max(data_in[:,1]), curr_robot_pose[1,3]+self.map_coverage[1]/2), 2)
         min_y = np.around(max(min(data_in[:,1]), curr_robot_pose[1,3]-self.map_coverage[1]/2), 2)
-    
+
         # filter out the points outside the boundary
         data_in_filtered = data_in[(data_in[:,0]>=min_x) & (data_in[:,0]<=max_x) & (data_in[:,1]>=min_y) & (data_in[:,1]<=max_y)]
         pts = data_in_filtered[:,:3]
@@ -322,7 +326,7 @@ class MapInterfaceNew:
 
         map = RegularGridInterpolator((xs, ys, zs), data,method="linear", bounds_error=False, fill_value=None) # extrapolate the values outside the map
         map((0,0,0))
-        
+
         max_z = max(pts[:,2])
         min_z = min(pts[:,2])
         xg = np.linspace(min_x, max_x, self.map_size[0])
@@ -333,10 +337,10 @@ class MapInterfaceNew:
         v = np.nan_to_num(map((X, Y, Z)), True, self.default_val)
         v = v.ravel(order='F')
         return xg, yg, zg, v
-    
+
     def apply_gaussian_filter(self, data, sigma):
         return gaussian_filter(data, sigma)
-    
+
     def apply_tv_filter(self, data, weight):
         return sr.denoise_tv_chambolle(data, weight=weight)
 
@@ -346,6 +350,8 @@ class MapGridInterface:
     """
 
     def __init__(self, config, topic_name="/pocd_slam_node/occupied_ef_map_grid_nodes"):
+        if MapGrid is None:
+            raise ImportError("voxblox_msgs is required for MapGridInterface. Install voxblox or disable SDF mapping.")
         print(topic_name)
         self.map_sub = rospy.Subscriber(topic_name, MapGrid, self._map_cb)
         self.mutex = threading.Lock()
@@ -366,10 +372,10 @@ class MapGridInterface:
         self.map_dim = self.map_size.size
 
         self.config = config["map"]
-    
+
     def ready(self):
         return self.map_msg_received
-    
+
     def get_map(self):
         if self.map_updated:
             t00 = time.perf_counter()
@@ -392,7 +398,7 @@ class MapGridInterface:
             return True, map, self.map_time
         else:
             return False, None, None
-        
+
     def _process_map_data(self, xg, yg, zg, v):
         data = v.reshape((len(xg), len(yg), len(zg)), order='F')
         map = RegularGridInterpolator((xg, yg, zg), data,method="linear", bounds_error=False, fill_value=None) # extrapolate the values outside the map
@@ -446,7 +452,7 @@ class GTMapInterface:
 
     def ready(self):
         return self.map_msg_received
-    
+
     def get_map(self):
         if self.map_updated:
 
@@ -460,7 +466,7 @@ class GTMapInterface:
             return True, [map], self.map_time
         else:
             return False, None, None
-        
+
     def _map_cb(self, msg):
         obstacles = []
         for marker in msg.markers:

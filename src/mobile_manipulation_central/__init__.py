@@ -32,7 +32,7 @@ from mobile_manipulation_central.trajectory_generation import (
 )
 from mobile_manipulation_central import ros_utils, simulation
 
-BAG_DIR = os.environ["MOBILE_MANIPULATION_CENTRAL_BAG_DIR"]
+BAG_DIR = os.environ.get("MOBILE_MANIPULATION_CENTRAL_BAG_DIR", "")
 
 
 def bound_array(a, lb=None, ub=None):
