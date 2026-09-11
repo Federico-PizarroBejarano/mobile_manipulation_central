@@ -15,7 +15,7 @@ def main():
     bag = rosbag.Bag(args.bagfile)
 
     est_msgs = [msg for _, msg, _ in bag.read_messages("/ridgeback/joint_states")]
-    vicon_msgs = [msg for _, msg, _ in bag.read_messages("/vicon/ThingBase_3/ThingBase_3")]
+    vicon_msgs = [msg for _, msg, _ in bag.read_messages("/vicon/ThingBase_Fed/ThingBase_Fed")]
 
     tbs, qbs = ros_utils.parse_ridgeback_vicon_msgs(vicon_msgs)
     tb_ests, qb_ests, vb_ests = ros_utils.parse_ridgeback_joint_state_msgs(est_msgs)

@@ -135,8 +135,14 @@ scene. You must be connected to the `DSL_DroneNet_5G` network.
 
 Start the Vicon bridge, UR10 driver, and gripper driver:
 ```
-roslaunch mobile_manipulation_central thing.launch
+roslaunch mobile_manipulation_central thing.launch use_tf:=true use_odom:=true
 ```
+For MPC / teleop on hardware, use `use_tf:=true use_odom:=true` so
+`ridgeback_tf_odom_estimator_node` fuses wheel odom (velocity) with Vicon
+(position). Velocity in `/ridgeback/joint_states` is always odom-derived;
+Vicon updates are rate-limited and outlier-gated (see
+`launch/ridgeback_tf.launch` params).
+
 To stream commands to the UR10, you must start the onboard program.
 
 Interaction with the robot is primarily done using the feedback topics (of type

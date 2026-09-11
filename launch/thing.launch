@@ -2,7 +2,7 @@
 
 <!-- Launch the Ridgeback, UR10, and gripper. F/T sensor is not launched here because thus far it appears to only work on-board. -->
 <launch>
-  <arg name="use_joy_stick_relay" default="false" doc="use joy stick for emergency stop"/>
+  <arg name="use_joy_stick_relay" default="true" doc="use joy stick for emergency stop"/>
   <arg name="use_tf" default="false" doc="use tf for ridgeback states"/>
   <arg name="use_odom" default="false" doc="use odom from ridgeback"/>
 

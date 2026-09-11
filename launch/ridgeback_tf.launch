@@ -3,7 +3,9 @@
 <!-- Track the Ridgeback base using Vicon -->
 <launch>
   <arg name="use_joy_stick_relay" default="false" doc="use joy stick for emergency stop"/>
-  <arg name="use_odom" default="false" doc="use odom velcoity for state estimation"/>
+  <arg name="use_odom" default="false" doc="use odom velocity for state estimation"/>
+
+  <include file="$(find mobile_manipulation_central)/launch/vicon.launch" />
 
   <!-- Republish Vicon /ridgeback/cmd_vel to /ridgeback_velocity_controller/cmd_vel -->
   <node name="ridgeback_velocity_relay" pkg="topic_tools" type="relay" respawn="true" args="ridgeback/cmd_vel ridgeback_velocity_controller/cmd_vel" output="screen" unless="$(arg use_joy_stick_relay)"/>
@@ -17,8 +19,15 @@
     <param name="update_rate" value="50"/>
   </node>
   <!-- Estimation of Ridgeback joint state from tf and odom messages. -->
+  <remap from="/vicon/ThingBase/ThingBase" to="/vicon/ThingBase_Fed/ThingBase_Fed"/>
   <node pkg="mobile_manipulation_central" type="ridgeback_tf_odom_estimator_node" name="ridgeback_tf_odom_estimator_node" required="true" output="screen" if="$(arg use_odom)">
-    <param name="target_frame_id" value="base_link"/>
-    <param name="source_frame_id" value="my_world"/>
+    <param name="world_frame_id" value="my_world"/>
+    <param name="vicon_base_frame_id" value="vicon_base_link"/>
+    <param name="tau_linear" value="0.08"/>
+    <param name="tau_angular" value="0.08"/>
+    <param name="v_max_linear" value="0.8"/>
+    <param name="v_max_angular" value="0.5"/>
+    <param name="max_vicon_innovation_m" value="0.15"/>
+    <param name="max_vicon_yaw_innovation_rad" value="0.5"/>
   </node>
 </launch>
