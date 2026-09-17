@@ -1,2 +1,8 @@
 *.npz
 *.pyc
+
+# Editors
+.vscode/
+.cursor/
+.cursorindexignore
+.ruff_cache/
