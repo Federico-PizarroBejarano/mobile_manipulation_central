@@ -103,6 +103,22 @@ target_link_libraries(projectile_vicon_estimator_node
 #)
 
 #############
+## Testing ##
+#############
+
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_gtest(test_ridgeback_base_fusion
+    test/test_ridgeback_base_fusion.cpp
+  )
+  if(TARGET test_ridgeback_base_fusion)
+    target_include_directories(test_ridgeback_base_fusion PRIVATE include)
+    target_link_libraries(test_ridgeback_base_fusion
+      ${catkin_LIBRARIES}
+    )
+  endif()
+endif()
+
+#############
 ## Install ##
 #############
 

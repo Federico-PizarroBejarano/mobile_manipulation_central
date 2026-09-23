@@ -29,5 +29,8 @@
     <param name="v_max_angular" value="0.5"/>
     <param name="max_vicon_innovation_m" value="0.15"/>
     <param name="max_vicon_yaw_innovation_rad" value="0.5"/>
+    <param name="max_vicon_jump_m" value="0.05"/>
+    <param name="max_vicon_yaw_jump_rad" value="0.1"/>
+    <param name="vicon_relock_consistent_count" value="5"/>
   </node>
 </launch>

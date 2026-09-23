@@ -32,6 +32,11 @@ class RidgebackTfOdomEstimatorNode {
                  0.15);
         nh.param("max_vicon_yaw_innovation_rad",
                  fusion_params_.max_vicon_yaw_innovation_rad, 0.5);
+        nh.param("max_vicon_jump_m", fusion_params_.max_vicon_jump_m, 0.05);
+        nh.param("max_vicon_yaw_jump_rad", fusion_params_.max_vicon_yaw_jump_rad,
+                 0.1);
+        nh.param("vicon_relock_consistent_count",
+                 fusion_params_.vicon_relock_consistent_count, 5);
 
         std::string base_vicon_topic;
         nh.param<std::string>("base_vicon_topic", base_vicon_topic,
@@ -144,8 +149,14 @@ class RidgebackTfOdomEstimatorNode {
             if (target_result == mm::ViconTargetResult::RejectedInnovation) {
                 ROS_WARN_STREAM_THROTTLE(
                     1.0,
-                    "TF_ODOM_ESTIMATOR: rejected Vicon target (innovation "
-                    "too large)");
+                    "TF_ODOM_ESTIMATOR: coasting on odom (Vicon innovation "
+                    "too large, streak="
+                        << fusion_state_.vicon_outlier_streak << ")");
+            } else if (target_result ==
+                       mm::ViconTargetResult::RelockedAfterCoast) {
+                ROS_WARN_STREAM(
+                    "TF_ODOM_ESTIMATOR: re-locked Vicon target after coast; "
+                    "smoothly correcting pose");
             }
 
             new_tf_available = false;

@@ -15,7 +15,7 @@ import numpy as np
 import mobile_manipulation_central as mm
 
 
-MAX_JOINT_VELOCITY = 0.2
+MAX_JOINT_VELOCITY = 0.3
 MAX_JOINT_ACCELERATION = 1.0
 MIN_DURATION = 1.0  # seconds
 P_GAIN = 1
