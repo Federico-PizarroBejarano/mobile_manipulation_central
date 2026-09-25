@@ -4,6 +4,8 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float64MultiArray
 from sensor_msgs.msg import Joy
 
+from mm_utils.teleop_mapping import hardware_deadman_held
+
 class ControlCommandRelayInterface:
     """Base class for control command topic relay interface"""
 
@@ -63,10 +65,8 @@ class MobileManipulatorControlCommandRelayInterface:
         self.base = RidgebackControlCommandRelayInterface()
 
         self.joy_sub = rospy.Subscriber("/bluetooth_teleop/joy", Joy, self._joy_cb)
-        self.enable_button = 13
 
     def _joy_cb(self, msg):
-        button = msg.buttons[self.enable_button]         # 1 when pressed
-
-        self.arm.update_switch(button)
-        self.base.update_switch(button)
+        pressed = 1 if hardware_deadman_held(msg.axes) else 0
+        self.arm.update_switch(pressed)
+        self.base.update_switch(pressed)
