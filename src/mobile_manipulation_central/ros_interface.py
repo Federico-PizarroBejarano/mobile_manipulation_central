@@ -14,6 +14,12 @@ from geometry_msgs.msg import TransformStamped
 from visualization_msgs.msg import MarkerArray, Marker
 
 from mobile_manipulation_central import ros_utils
+from mm_utils.gripper_cable_guard import (
+    CABLE_GUARD_ENABLED_PARAM,
+    CABLE_GUARD_RELEASE_PARAM,
+    DEFAULT_RELEASE_MARGIN_RAD,
+    GripperCableGuard,
+)
 
 try:
     from voxblox_msgs.msg import MapGrid
@@ -681,6 +687,7 @@ class UR10ROSInterface(RobotROSInterface):
         self.joint_state_sub = rospy.Subscriber(
             "/ur10/joint_states", JointState, self._joint_state_cb
         )
+        self._cable_guard = GripperCableGuard(enabled=False)
 
     def _joint_state_cb(self, msg):
         """Callback for arm joint feedback."""
@@ -695,9 +702,26 @@ class UR10ROSInterface(RobotROSInterface):
         """
         assert cmd_vel.shape == (self.nv,)
 
+        if self.joint_states_received:
+            self._sync_cable_guard()
+            cmd_vel, clipped = self._cable_guard.apply(self.q, cmd_vel)
+            if clipped:
+                rospy.logwarn_throttle(
+                    2.0,
+                    "Gripper cable guard: arm held at the cable limit. "
+                    "Yaw the gripper back to move again.",
+                )
+
         msg = Float64MultiArray()
         msg.data = list(cmd_vel)
         self.cmd_pub.publish(msg)
+
+    def _sync_cable_guard(self):
+        """Read the experiment switch. Missing params leave the guard off."""
+        self._cable_guard.enabled = bool(rospy.get_param(CABLE_GUARD_ENABLED_PARAM, False))
+        self._cable_guard.release_margin_rad = float(
+            rospy.get_param(CABLE_GUARD_RELEASE_PARAM, DEFAULT_RELEASE_MARGIN_RAD)
+        )
 
 
 class MobileManipulatorROSInterface:
